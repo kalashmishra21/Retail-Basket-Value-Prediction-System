@@ -1,0 +1,32 @@
+# ── Node / Frontend ──────────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.cache/
+
+# ── Environment variables (NEVER commit secrets) ──────────────────────────────
+.env
+.env.local
+.env.production
+backend/.env
+
+# ── Python / Django ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.so
+venv/
+env/
+ENV/
+backend/venv/
+
+# ── Django runtime files ──────────────────────────────────────────────────────
+*.log
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
