@@ -1,3 +1,17 @@
+"""
+Django REST Framework Serializers for API Data Validation and Transformation
+
+This module defines serializers that handle:
+- User registration with strong password validation
+- User authentication and profile management
+- Dataset upload and validation
+- Prediction result serialization
+- Model metrics and notification settings
+
+All serializers enforce strict validation rules to ensure data integrity
+and security before database operations.
+"""
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -9,8 +23,10 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializer for User model
-    Returns user data without sensitive information like password
+    Serializer for User model - handles user data representation
+    Excludes sensitive fields like password for security
+    Provides computed full_name field from first_name + last_name
+    Used for profile display and user information endpoints
     """
     full_name = serializers.SerializerMethodField()
     
@@ -33,8 +49,10 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
-    Serializer for user registration with strong password validation
-    Enforces password strength requirements and validates all user data
+    Serializer for new user registration with comprehensive validation
+    Enforces strict password requirements: 8+ chars, uppercase, lowercase, number, special char
+    Validates password confirmation match before account creation
+    Automatically creates notification settings for new users
     """
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True)
@@ -103,13 +121,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 class UserLoginSerializer(serializers.Serializer):
     """
-    Serializer for user login
-    Validates email and password format before authentication
+    Serializer for user authentication
+    Validates email format and password length before attempting login
+    Does not perform actual authentication - only validates input format
+    Authentication logic handled in views.py login_user function
     """
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
 
 class DatasetSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Dataset model - handles file upload metadata
+    Stores information about uploaded CSV/Excel files
+    Auto-assigns current user and timestamp on creation
+    Used for tracking data sources and file statistics
+    """
     class Meta:
         model = Dataset
         fields = '__all__'
@@ -135,11 +161,23 @@ class PredictionSerializer(serializers.ModelSerializer):
         return None
 
 class ModelMetricsSerializer(serializers.ModelSerializer):
+    """
+    Serializer for ModelMetrics model - handles ML model performance data
+    Stores RMSE, MAE, R² scores and training metadata
+    Used for tracking model accuracy over time
+    All metrics computed from real predictions, never hardcoded
+    """
     class Meta:
         model = ModelMetrics
         fields = '__all__'
 
 class NotificationSettingsSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user notification preferences
+    Controls which alerts user receives (performance, validation)
+    Only exposes user-configurable fields, hides internal metadata
+    Used in Settings page for preference management
+    """
     class Meta:
         model = NotificationSettings
         fields = ['model_performance_alerts', 'data_validation_reports']

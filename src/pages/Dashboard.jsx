@@ -138,7 +138,6 @@ const Dashboard = () => {
     { icon: '🔍', label: 'Explainability',path: '/explainability' },
     { icon: '📈', label: 'Metrics',       path: '/metrics' },
     { icon: '📊', label: 'Visualization', path: '/visualization' },
-    { icon: '📡', label: 'Monitoring',    path: '/monitoring' },
     { icon: '⚙️', label: 'Settings',      path: '/settings' },
   ]
 

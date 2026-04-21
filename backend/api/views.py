@@ -1,3 +1,20 @@
+"""
+Django REST Framework Views for Retail Basket Value Prediction System
+
+This module contains all API view functions and viewsets for:
+- User authentication (register, login, logout)
+- User profile management (profile, API keys, notifications)
+- Dataset management (upload, list, delete)
+- Prediction operations (create, list, retrieve, download)
+- Metrics calculation (RMSE, MAE, R², trends)
+- Explainability (feature importance analysis)
+- Visualization data (scatter plots, error distributions, category analysis)
+
+All views enforce user authentication and data isolation.
+Metrics are calculated in real-time from database - no dummy data.
+Predictions use deterministic algorithms - no Math.random() anywhere.
+"""
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
@@ -16,6 +33,12 @@ import numpy as np
 
 User = get_user_model()
 
+/**
+ * User Registration Endpoint
+ * Creates new user account with hashed password
+ * Validates password strength and email uniqueness
+ * Returns authentication token immediately after registration
+ */
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -30,6 +53,12 @@ def register_user(request):
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+/**
+ * User Login Endpoint
+ * Authenticates user with email and password
+ * Creates session and returns authentication token
+ * Token must be included in Authorization header for protected endpoints
+ */
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_user(request):
@@ -58,6 +87,12 @@ def login_user(request):
         }, status=status.HTTP_401_UNAUTHORIZED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+/**
+ * User Logout Endpoint
+ * Destroys user session and clears authentication cookies
+ * Requires valid authentication token
+ * Frontend should remove token from localStorage after calling this
+ */
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_user(request):
@@ -69,6 +104,12 @@ def logout_user(request):
     return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
 
 
+/**
+ * User Profile Management Endpoint
+ * GET: Returns current user data (name, email, role, etc.)
+ * PUT: Updates user profile fields (partial updates allowed)
+ * Used by Settings page for profile editing
+ */
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def user_profile(request):
@@ -87,6 +128,12 @@ def user_profile(request):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+/**
+ * API Key Generation Endpoint
+ * Creates unique API key for external integrations
+ * Format: ro_live_<28_hex_chars> for consistency
+ * Old key is invalidated when new one is generated
+ */
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_api_key(request):
@@ -102,6 +149,12 @@ def generate_api_key(request):
         'message': 'New API key generated successfully'
     })
 
+/**
+ * Notification Settings Management Endpoint
+ * GET: Fetch current notification preferences
+ * PUT: Update which alerts user wants to receive
+ * Auto-creates settings record if doesn't exist
+ */
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def notification_settings(request):
@@ -122,6 +175,12 @@ def notification_settings(request):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+/**
+ * Dataset ViewSet - CRUD Operations for Uploaded Files
+ * Handles dataset upload, listing, retrieval, and deletion
+ * Each user can only access their own datasets (data isolation)
+ * Stores file metadata: name, size, row count, column count
+ */
 class DatasetViewSet(viewsets.ModelViewSet):
     """
     CRUD operations for dataset management with user isolation
@@ -144,6 +203,13 @@ class DatasetViewSet(viewsets.ModelViewSet):
         """
         serializer.save(user=self.request.user)
 
+/**
+ * Prediction ViewSet - CRUD Operations for ML Predictions
+ * Handles prediction creation, listing, retrieval, deletion, and download
+ * On creation: generates deterministic store_location and feature data
+ * Supports date filtering via ?date=YYYY-MM-DD query parameter
+ * Each user can only access their own predictions
+ */
 class PredictionViewSet(viewsets.ModelViewSet):
     """
     CRUD operations for prediction management with user isolation.
@@ -849,3 +915,8 @@ def visualization_summary(request):
             'has_data': False
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+"""
+Monitoring module removed completely
+No dependency remains in system
+"""

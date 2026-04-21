@@ -10,7 +10,6 @@ import PredictionResult from './pages/PredictionResult'
 import History from './pages/History'
 import Explainability from './pages/Explainability'
 import Metrics from './pages/Metrics'
-import Monitoring from './pages/Monitoring'
 import Visualization from './pages/Visualization'
 
 /**
@@ -32,7 +31,6 @@ function App() {
           <Route path="/history" element={<History />} />
           <Route path="/explainability" element={<Explainability />} />
           <Route path="/metrics" element={<Metrics />} />
-          <Route path="/monitoring" element={<Monitoring />} />
           <Route path="/visualization" element={<Visualization />} />
         </Routes>
       </Router>
