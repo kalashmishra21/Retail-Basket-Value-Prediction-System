@@ -11,17 +11,18 @@ A production-ready, full-stack machine learning web application that predicts re
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Setup Instructions](#setup-instructions)
-- [How It Works](#how-it-works)
-- [Dataset Format](#dataset-format)
-- [API Documentation](#api-documentation)
-- [Screenshots](#screenshots)
-- [Contributing](#contributing)
-- [License](#license)
+- [🎯 Overview](#-overview)
+- [✨ Features](#-features)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [📂 Project Structure](#-project-structure)
+- [🚀 Setup Instructions](#-setup-instructions)
+- [🔄 How It Works](#-how-it-works)
+- [📊 Dataset Format](#-dataset-format)
+- [📡 API Documentation](#-api-documentation)
+- [📸 Screenshots](#-screenshots)
+- [🧪 Testing](#-testing)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
 ---
 
@@ -229,23 +230,7 @@ Open browser and navigate to: `http://localhost:3001`
 
 ---
 
-## 🐳 Docker Deployment (Alternative)
 
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Rebuild containers
-docker-compose up -d --build
-```
-
----
 
 ## 🔄 How It Works
 
@@ -427,7 +412,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Kalash Mishra**
 - GitHub: [@kalashmishra21](https://github.com/kalashmishra21)
-- LinkedIn: [Kalash Mishra](https://linkedin.com/in/kalashmishra)
+- LinkedIn: [Kalash Mishra](https://www.linkedin.com/in/kalashmishra21/)
 
 ---
 
