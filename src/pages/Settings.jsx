@@ -29,10 +29,10 @@ const Settings = () => {
     }
     setCurrentUser(user)
     setFormData({
-      fullName: user.name || 'Alex Rivera',
-      email: user.email || 'a.rivera@retailcorp.ai',
-      professionalRole: 'Senior Data Scientist',
-      department: 'Predictive Analytics'
+      fullName: user.name || '',
+      email: user.email || '',
+      professionalRole: user.professionalRole || '',
+      department: user.department || ''
     })
   }, [navigate])
 
@@ -53,14 +53,16 @@ const Settings = () => {
 
   /**
    * Handle save changes
-   * Updates user profile data in localStorage
+   * Updates user profile data in localStorage including professional role and department
    */
   const handleSaveChanges = () => {
-    // Update user data in localStorage
+    // Update user data in localStorage with all fields
     const updatedUser = {
       ...currentUser,
       name: formData.fullName,
-      email: formData.email
+      email: formData.email,
+      professionalRole: formData.professionalRole,
+      department: formData.department
     }
     localStorage.setItem('currentUser', JSON.stringify(updatedUser))
     setCurrentUser(updatedUser)

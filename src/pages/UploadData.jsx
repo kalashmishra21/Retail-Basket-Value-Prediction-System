@@ -49,51 +49,101 @@ const UploadData = () => {
     return new Promise((resolve) => {
       const reader = new FileReader()
       reader.onload = (e) => {
-        const text  = e.target.result
+        const text = e.target.result
         const lines = text.split('\n').filter(l => l.trim() !== '')
+        
+        console.log('=== CSV PARSING START ===')
+        console.log('Total lines (including header):', lines.length)
+        
         if (lines.length < 2) {
+          console.log('ERROR: Not enough lines in CSV')
           resolve({ totalRows: 0, featureCount: 0, nullRatio: 0, duplicates: 0 })
           return
         }
 
-        const featureCount = lines[0].split(',').length
-        const dataLines    = lines.slice(1)   // exclude header
-        const sampledRows  = dataLines.length
+        // Parse header to get feature count
+        const header = lines[0]
+        const featureCount = header.split(',').length
+        console.log('Feature count:', featureCount)
+        console.log('Header:', header)
+        
+        const dataLines = lines.slice(1)   // exclude header
+        const sampledRows = dataLines.length
+        console.log('Data rows:', sampledRows)
 
         // Scale row count for large files (we only read 2MB slice)
         const scaledRows = file.size > 2 * 1024 * 1024
           ? Math.round(sampledRows * (file.size / (2 * 1024 * 1024)))
           : sampledRows
 
-        // Null ratio: count empty cells in sampled rows
-        let nullCells  = 0
+        // Null ratio: count empty/missing cells in sampled rows
+        let nullCells = 0
         let totalCells = 0
-        dataLines.forEach(line => {
+        let sampleRowsChecked = 0
+        
+        dataLines.forEach((line, idx) => {
           const cells = line.split(',')
           totalCells += cells.length
-          cells.forEach(c => { if (c.trim() === '' || c.trim().toLowerCase() === 'null') nullCells++ })
+          
+          cells.forEach((cell, cellIdx) => {
+            const trimmed = cell.trim()
+            // Check for various null representations
+            const isNull = (
+              trimmed === '' ||                    // Empty
+              trimmed.toLowerCase() === 'null' ||  // "null"
+              trimmed.toLowerCase() === 'na' ||    // "NA"
+              trimmed.toLowerCase() === 'n/a' ||   // "N/A"
+              trimmed === 'NaN' ||                 // "NaN"
+              trimmed === 'None' ||                // "None"
+              trimmed === '-' ||                   // "-"
+              trimmed === '?' ||                   // "?"
+              trimmed === 'undefined'              // "undefined"
+            )
+            
+            if (isNull) {
+              nullCells++
+              if (sampleRowsChecked < 3) {
+                console.log(`Row ${idx + 1}, Cell ${cellIdx + 1}: NULL detected ("${cell}")`)
+              }
+            }
+          })
+          
+          if (idx < 3) sampleRowsChecked++
         })
+        
         const nullRatio = totalCells > 0
           ? parseFloat(((nullCells / totalCells) * 100).toFixed(2))
           : 0
 
-        // Duplicate count: exact string match between rows, capped at sampledRows - 1
+        console.log('Null Detection Results:')
+        console.log('- Total cells:', totalCells)
+        console.log('- Null cells:', nullCells)
+        console.log('- Null ratio:', nullRatio + '%')
+
+        // Duplicate count: exact string match between rows
         const seen = new Set()
         let duplicates = 0
         dataLines.forEach(line => {
           const key = line.trim()
-          if (seen.has(key)) {
+          if (key && seen.has(key)) {
             duplicates++
-          } else {
+          } else if (key) {
             seen.add(key)
           }
         })
-        // Ensure duplicates never exceed totalRows - 1
         duplicates = Math.min(duplicates, Math.max(0, sampledRows - 1))
+        console.log('Duplicates found:', duplicates)
+
+        console.log('=== FINAL STATS ===')
+        console.log({ totalRows: scaledRows, featureCount, nullRatio, duplicates })
+        console.log('')
 
         resolve({ totalRows: scaledRows, featureCount, nullRatio, duplicates })
       }
-      reader.onerror = () => resolve({ totalRows: 0, featureCount: 0, nullRatio: 0, duplicates: 0 })
+      reader.onerror = () => {
+        console.error('ERROR: Failed to read file')
+        resolve({ totalRows: 0, featureCount: 0, nullRatio: 0, duplicates: 0 })
+      }
       reader.readAsText(file.slice(0, 2 * 1024 * 1024))
     })
   }
@@ -125,6 +175,12 @@ const UploadData = () => {
         setIsProcessing(false)
         setDataStats({ totalRows: stats.totalRows, featureCount: stats.featureCount })
         setQuality({ nullRatio: stats.nullRatio, duplicates: stats.duplicates, uploadedAt })
+        console.log('Quality Stats Set:', { 
+          nullRatio: stats.nullRatio, 
+          duplicates: stats.duplicates, 
+          totalRows: stats.totalRows,
+          featureCount: stats.featureCount 
+        })
       }
     }, 100)
   }
@@ -216,16 +272,99 @@ const UploadData = () => {
               const elapsed = Math.round((performance.now() - startTime) / 1000)
               setActualElapsed(elapsed)
               try {
+                // Calculate confidence based on data quality metrics
+                // Access quality data from state (nullRatio, duplicates)
+                let baseConfidence = 95
+                
+                console.log('=== CONFIDENCE CALCULATION START ===')
+                console.log('Input Data:', {
+                  nullRatio: quality.nullRatio,
+                  duplicates: quality.duplicates,
+                  totalRows: dataStats.totalRows,
+                  featureCount: dataStats.featureCount
+                })
+                
+                // Reduce confidence based on null ratio (max -25 points)
+                const nullRatio = quality.nullRatio || 0
+                if (nullRatio > 40) {
+                  baseConfidence -= 25
+                  console.log(`Null ratio ${nullRatio}% > 40% → -25 points`)
+                } else if (nullRatio > 30) {
+                  baseConfidence -= 20
+                  console.log(`Null ratio ${nullRatio}% > 30% → -20 points`)
+                } else if (nullRatio > 20) {
+                  baseConfidence -= 15
+                  console.log(`Null ratio ${nullRatio}% > 20% → -15 points`)
+                } else if (nullRatio > 10) {
+                  baseConfidence -= 10
+                  console.log(`Null ratio ${nullRatio}% > 10% → -10 points`)
+                } else if (nullRatio > 5) {
+                  baseConfidence -= 5
+                  console.log(`Null ratio ${nullRatio}% > 5% → -5 points`)
+                }
+                
+                // Reduce confidence based on duplicates (max -15 points)
+                const duplicates = quality.duplicates || 0
+                const duplicateRatio = dataStats.totalRows > 0 ? (duplicates / dataStats.totalRows) * 100 : 0
+                if (duplicateRatio > 30) {
+                  baseConfidence -= 15
+                  console.log(`Duplicate ratio ${duplicateRatio.toFixed(2)}% > 30% → -15 points`)
+                } else if (duplicateRatio > 20) {
+                  baseConfidence -= 10
+                  console.log(`Duplicate ratio ${duplicateRatio.toFixed(2)}% > 20% → -10 points`)
+                } else if (duplicateRatio > 10) {
+                  baseConfidence -= 5
+                  console.log(`Duplicate ratio ${duplicateRatio.toFixed(2)}% > 10% → -5 points`)
+                } else if (duplicateRatio > 5) {
+                  baseConfidence -= 3
+                  console.log(`Duplicate ratio ${duplicateRatio.toFixed(2)}% > 5% → -3 points`)
+                }
+                
+                // Reduce confidence for small datasets (max -20 points)
+                if (dataStats.totalRows < 30) {
+                  baseConfidence -= 20
+                  console.log(`Total rows ${dataStats.totalRows} < 30 → -20 points`)
+                } else if (dataStats.totalRows < 50) {
+                  baseConfidence -= 15
+                  console.log(`Total rows ${dataStats.totalRows} < 50 → -15 points`)
+                } else if (dataStats.totalRows < 100) {
+                  baseConfidence -= 10
+                  console.log(`Total rows ${dataStats.totalRows} < 100 → -10 points`)
+                } else if (dataStats.totalRows < 200) {
+                  baseConfidence -= 5
+                  console.log(`Total rows ${dataStats.totalRows} < 200 → -5 points`)
+                }
+                
+                // Reduce confidence for low feature count (max -15 points)
+                if (dataStats.featureCount < 4) {
+                  baseConfidence -= 15
+                  console.log(`Feature count ${dataStats.featureCount} < 4 → -15 points`)
+                } else if (dataStats.featureCount < 5) {
+                  baseConfidence -= 10
+                  console.log(`Feature count ${dataStats.featureCount} < 5 → -10 points`)
+                } else if (dataStats.featureCount < 7) {
+                  baseConfidence -= 5
+                  console.log(`Feature count ${dataStats.featureCount} < 7 → -5 points`)
+                }
+                
+                console.log('Base confidence after penalties:', baseConfidence)
+                
+                // Ensure confidence stays within realistic bounds (50-99%)
+                const calculatedConfidence = Math.max(50, Math.min(99, baseConfidence))
+                
+                console.log('=== FINAL CONFIDENCE:', calculatedConfidence, '===')
+                console.log('')
+                
                 // Use deterministic predicted value based on dataset size (no Math.random)
                 const baseValue = (dataStats.totalRows * 0.03 + dataStats.featureCount * 12).toFixed(2)
-                const confidence = Math.min(99, 80 + dataStats.featureCount * 0.3).toFixed(2)
-                await predictionAPI.create({
+                
+                const predictionResponse = await predictionAPI.create({
                   dataset: datasetResponse.data.id,
                   predicted_value: baseValue,
-                  confidence: confidence,
+                  confidence: calculatedConfidence.toFixed(2),
                   status: 'completed'
                 })
-                setTimeout(() => navigate('/predictions'), 800)
+                setTimeout(() => navigate('/prediction-result', { state: { predictionId: predictionResponse.data.id } }), 800)
               } catch (error) {
                 console.error('Failed to save prediction:', error)
                 alert('Prediction completed but failed to save. Please try again.')
@@ -339,8 +478,8 @@ const UploadData = () => {
             /* Processing View */
             <div>
               <div className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Processing Dataset</h1>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Processing Dataset</h1>
+                <div className={`flex items-center space-x-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                   <svg className="w-4 h-4 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
@@ -375,8 +514,8 @@ const UploadData = () => {
                         </svg>
                       )}
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Data Cleaning</h3>
-                    <p className="text-xs text-gray-500">Handling missing values and outliers</p>
+                    <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-1`}>Data Cleaning</h3>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Handling missing values and outliers</p>
                   </div>
 
                   <div className={`text-center ${processingProgress >= 50 ? 'opacity-100' : 'opacity-50'}`}>
@@ -391,8 +530,8 @@ const UploadData = () => {
                         </svg>
                       )}
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Feature Engineering</h3>
-                    <p className="text-xs text-gray-500">Generating predictive variables</p>
+                    <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-1`}>Feature Engineering</h3>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Generating predictive variables</p>
                   </div>
 
                   <div className={`text-center ${processingProgress >= 75 ? 'opacity-100' : 'opacity-50'}`}>
@@ -407,8 +546,8 @@ const UploadData = () => {
                         </svg>
                       )}
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Validation</h3>
-                    <p className="text-xs text-gray-500">Cross-validating model accuracy</p>
+                    <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-1`}>Validation</h3>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Cross-validating model accuracy</p>
                   </div>
 
                   <div className={`text-center ${processingProgress >= 100 ? 'opacity-100' : 'opacity-50'}`}>
@@ -417,8 +556,8 @@ const UploadData = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Inference</h3>
-                    <p className="text-xs text-gray-500">Generating final result predictions</p>
+                    <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-1`}>Inference</h3>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Generating final result predictions</p>
                   </div>
                 </div>
               </div>
@@ -428,25 +567,25 @@ const UploadData = () => {
                 <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
                   <h3 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-4`}>PROCESS DETAILS</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Job ID</span>
-                      <span className="text-sm font-medium text-gray-900">RB-982-PX-24</span>
+                    <div className={`flex items-center justify-between py-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Job ID</span>
+                      <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>RB-982-PX-24</span>
                     </div>
-                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Algorithm</span>
-                      <span className="text-sm font-medium text-gray-900">XGBoost Regressor</span>
+                    <div className={`flex items-center justify-between py-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Algorithm</span>
+                      <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>XGBoost Regressor</span>
                     </div>
-                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Est. Time Remaining</span>
-                      <span className="text-sm font-medium text-gray-900">
+                    <div className={`flex items-center justify-between py-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Est. Time Remaining</span>
+                      <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         {actualElapsed !== null
                           ? `Completed in ${actualElapsed}s`
                           : `~${Math.max(0, 7 - Math.floor(processingProgress / 14))}s`}
                       </span>
                     </div>
                     <div className="flex items-center justify-between py-2">
-                      <span className="text-sm text-gray-600">Computing Nodes</span>
-                      <span className="text-sm font-medium text-gray-900">CPU Cluster (8-Core)</span>
+                      <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Computing Nodes</span>
+                      <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>CPU Cluster (8-Core)</span>
                     </div>
                   </div>
 
@@ -571,36 +710,36 @@ const UploadData = () => {
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <h3 className="font-semibold text-gray-900">Schema Validation</h3>
+                        <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Schema Validation</h3>
                       </div>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Column Alignment</span>
+                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Column Alignment</span>
                           <span className="text-green-600 font-medium">Passed</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Data Type Consistency</span>
+                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Data Type Consistency</span>
                           <span className="text-green-600 font-medium">Passed</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="border border-gray-200 rounded-lg p-4">
+                    <div className={`border ${isDarkMode ? 'border-gray-700 bg-gray-700' : 'border-gray-200 bg-white'} rounded-lg p-4`}>
                       <div className="flex items-center space-x-2 mb-3">
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
-                        <h3 className="font-semibold text-gray-900">Quality Assessment</h3>
+                        <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Quality Assessment</h3>
                       </div>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Null Value Ratio</span>
-                          <span className="text-gray-900 font-medium">
+                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Null Value Ratio</span>
+                          <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                             {quality.nullRatio !== null ? `${quality.nullRatio}%` : '—'}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Duplicate Records</span>
+                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Duplicate Records</span>
                           <span className={`font-medium ${quality.duplicates > 0 ? 'text-orange-600' : 'text-green-600'}`}>
                             {quality.duplicates !== null
                               ? quality.duplicates > 0 ? `${quality.duplicates} Flagged` : 'None'
@@ -608,8 +747,8 @@ const UploadData = () => {
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Uploaded At</span>
-                          <span className="text-gray-900 font-medium text-xs">
+                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Uploaded At</span>
+                          <span className={`font-medium text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                             {quality.uploadedAt || '—'}
                           </span>
                         </div>
@@ -622,20 +761,20 @@ const UploadData = () => {
                 {uploadProgress === 100 && (
                   <div className="grid grid-cols-2 gap-6 mb-6">
                     <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-1">TOTAL ROWS</p>
-                      <p className="text-3xl font-bold text-gray-900">{dataStats.totalRows.toLocaleString()}</p>
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-1`}>TOTAL ROWS</p>
+                      <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{dataStats.totalRows.toLocaleString()}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-1">FEATURE COUNT</p>
-                      <p className="text-3xl font-bold text-gray-900">{dataStats.featureCount}</p>
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-1`}>FEATURE COUNT</p>
+                      <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{dataStats.featureCount}</p>
                     </div>
                   </div>
                 )}
 
                 {/* Action Buttons — Advanced Options removed */}
                 {uploadProgress === 100 && (
-                  <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-                    <button onClick={handleClearDataset} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                  <div className={`flex items-center justify-between pt-6 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <button onClick={handleClearDataset} className={`px-4 py-2 border ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-lg text-sm font-medium transition`}>
                       Clear Dataset
                     </button>
                     <button
