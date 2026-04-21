@@ -349,12 +349,12 @@ const UploadData = () => {
               </div>
 
               {/* Global Progress */}
-              <div className="bg-white rounded-xl border border-gray-200 p-8 mb-8">
+              <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl border p-8 mb-8`}>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-gray-900">GLOBAL PROGRESS</h2>
+                  <h2 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>GLOBAL PROGRESS</h2>
                   <span className="text-3xl font-bold text-blue-600">{Math.round(processingProgress)}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-4 mb-8">
+                <div className={`w-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-4 mb-8`}>
                   <div 
                     className="bg-blue-600 h-4 rounded-full transition-all duration-300"
                     style={{ width: `${processingProgress}%` }}
@@ -425,8 +425,8 @@ const UploadData = () => {
 
               {/* Process Details & Logs */}
               <div className="grid grid-cols-2 gap-6">
-                <div className="bg-white rounded-xl border border-gray-200 p-6">
-                  <h3 className="font-bold text-gray-900 mb-4">PROCESS DETAILS</h3>
+                <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
+                  <h3 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-4`}>PROCESS DETAILS</h3>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between py-2 border-b border-gray-100">
                       <span className="text-sm text-gray-600">Job ID</span>
@@ -450,14 +450,14 @@ const UploadData = () => {
                     </div>
                   </div>
 
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                  <div className={`mt-6 p-4 ${isDarkMode ? 'bg-blue-900' : 'bg-blue-50'} rounded-lg`}>
                     <div className="flex items-start space-x-2">
                       <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <div>
-                        <h4 className="font-semibold text-gray-900 text-sm mb-1">Automatic Transition</h4>
-                        <p className="text-xs text-gray-700">The system will automatically redirect to the Results Dashboard as soon as the inference step completes.</p>
+                        <h4 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} text-sm mb-1`}>Automatic Transition</h4>
+                        <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>The system will automatically redirect to the Results Dashboard as soon as the inference step completes.</p>
                       </div>
                     </div>
                   </div>
@@ -490,29 +490,29 @@ const UploadData = () => {
             /* Upload View */
             <div>
           {/* Preparation Guide */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8 flex items-start space-x-3">
+          <div className={`${isDarkMode ? 'bg-blue-900 border-blue-800' : 'bg-blue-50 border-blue-200'} rounded-xl p-4 mb-8 flex items-start space-x-3`}>
             <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <h3 className="font-semibold text-blue-900 mb-1">Preparation Guide</h3>
-              <p className="text-sm text-blue-800">
+              <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-blue-900'} mb-1`}>Preparation Guide</h3>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-blue-800'}`}>
                 Ensure your dataset includes mandatory columns: <span className="font-mono">transaction_id</span>, <span className="font-mono">item_id</span>, and <span className="font-mono">item_list</span>. Supported formats: .csv, .json. Maximum file size: 50MB.
               </p>
             </div>
           </div>
 
           {/* Data Ingestion */}
-          <div className="bg-white rounded-xl border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Data Ingestion</h2>
-            <p className="text-sm text-gray-600 mb-8">Upload your retail transaction logs for batch value prediction.</p>
+          <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl border p-8`}>
+            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Data Ingestion</h2>
+            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-8`}>Upload your retail transaction logs for batch value prediction.</p>
 
             {/* File Upload Area */}
             {!uploadedFile ? (
               <div
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
-                className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-400 transition cursor-pointer"
+                className={`border-2 border-dashed ${isDarkMode ? 'border-gray-600 bg-gray-700 hover:border-blue-500' : 'border-gray-300 bg-white hover:border-blue-400'} rounded-xl p-12 text-center transition cursor-pointer`}
               >
                 <input
                   type="file"
@@ -522,28 +522,28 @@ const UploadData = () => {
                   onChange={handleFileUpload}
                 />
                 <label htmlFor="file-upload" className="cursor-pointer">
-                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-16 h-16 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'} mx-auto mb-4`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  <p className="text-lg font-medium text-gray-700 mb-2">Drag and drop files here</p>
-                  <p className="text-sm text-gray-500">or click to browse</p>
-                  <p className="text-xs text-gray-400 mt-2">Supports .csv, .json, .xlsx up to 50MB</p>
+                  <p className={`text-lg font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>Drag and drop files here</p>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>or click to browse</p>
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'} mt-2`}>Supports .csv, .json, .xlsx up to 50MB</p>
                 </label>
               </div>
             ) : (
               <div>
                 {/* Uploaded File Info */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between">
+                <div className={`${isDarkMode ? 'bg-blue-900 border-blue-800' : 'bg-blue-50 border-blue-200'} rounded-lg p-4 mb-4 flex items-center justify-between`}>
                   <div className="flex items-center space-x-3">
                     <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <div>
-                      <p className="font-medium text-gray-900">{uploadedFile.name}</p>
-                      <p className="text-sm text-gray-600">{uploadedFile.size} • Successfully uploaded</p>
+                      <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{uploadedFile.name}</p>
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{uploadedFile.size} • Successfully uploaded</p>
                     </div>
                   </div>
-                  <button onClick={handleClearDataset} className="text-gray-400 hover:text-gray-600">
+                  <button onClick={handleClearDataset} className={`${isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -554,10 +554,10 @@ const UploadData = () => {
                 {isProcessing && (
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Upload & Processing Progress</span>
+                      <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Upload & Processing Progress</span>
                       <span className="text-sm font-medium text-blue-600">{uploadProgress}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className={`w-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2`}>
                       <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
                     </div>
                   </div>
@@ -566,7 +566,7 @@ const UploadData = () => {
                 {/* Validation Results */}
                 {uploadProgress === 100 && (
                   <div className="grid grid-cols-2 gap-6 mb-6">
-                    <div className="border border-gray-200 rounded-lg p-4">
+                    <div className={`border ${isDarkMode ? 'border-gray-700 bg-gray-700' : 'border-gray-200 bg-white'} rounded-lg p-4`}>
                       <div className="flex items-center space-x-2 mb-3">
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -651,28 +651,12 @@ const UploadData = () => {
                 )}
               </div>
             )}
-
-            {/* Footer Links */}
-            <div className="flex items-center justify-center space-x-6 mt-8 pt-6 border-t border-gray-200">
-              <button className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Download Sample JSON Template</span>
-              </button>
-              <button className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>View Data Documentation</span>
-              </button>
-            </div>
           </div>
             </div>
           )}
 
           {/* Footer */}
-          <div className="mt-8 flex items-center justify-between text-xs text-gray-500">
+          <div className={`mt-8 flex items-center justify-between text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
             <p>© 2024 Retail Basket Value Prediction System</p>
             <div className="flex items-center space-x-4">
               <span>System Status: Online</span>
