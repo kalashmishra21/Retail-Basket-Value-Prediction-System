@@ -19,10 +19,19 @@ urlpatterns = [
     
     # Metrics
     path('metrics/latest/', views.calculate_metrics, name='calculate-metrics'),
+    path('metrics/summary/', views.metrics_summary, name='metrics-summary'),
+    path('metrics/timeseries/', views.metrics_timeseries, name='metrics-timeseries'),
+    path('metrics/snapshots/', views.metrics_snapshots, name='metrics-snapshots'),
     path('metrics/trends/', views.get_trends, name='metrics-trends'),
 
     # Explainability
     path('explainability/<str:prediction_id>/', views.get_explainability, name='explainability'),
+    
+    # Visualization
+    path('visualization/scatter/', views.visualization_scatter, name='visualization-scatter'),
+    path('visualization/error-distribution/', views.visualization_error_distribution, name='visualization-error-distribution'),
+    path('visualization/category-analysis/', views.visualization_category_analysis, name='visualization-category-analysis'),
+    path('visualization/summary/', views.visualization_summary, name='visualization-summary'),
     
     # Router URLs
     path('', include(router.urls)),

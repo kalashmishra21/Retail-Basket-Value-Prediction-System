@@ -77,6 +77,9 @@ export const predictionAPI = {
 export const metricsAPI = {
   getLatest: () => api.get('/metrics/latest/'),
   getTrends: () => api.get('/metrics/trends/'),
+  getSummary: () => api.get('/metrics/summary/'),
+  getTimeseries: (range = '30days') => api.get(`/metrics/timeseries/?range=${range}`),
+  getSnapshots: () => api.get('/metrics/snapshots/'),
 }
 
 // Explainability APIs
@@ -86,6 +89,14 @@ export const explainabilityAPI = {
    * Returns ranked features with category classification from the backend.
    */
   getByPredictionId: (predictionId) => api.get(`/explainability/${predictionId}/`),
+}
+
+// Visualization APIs
+export const visualizationAPI = {
+  getSummary: () => api.get('/visualization/summary/'),
+  getScatter: () => api.get('/visualization/scatter/'),
+  getErrorDistribution: () => api.get('/visualization/error-distribution/'),
+  getCategoryAnalysis: () => api.get('/visualization/category-analysis/'),
 }
 
 export default api

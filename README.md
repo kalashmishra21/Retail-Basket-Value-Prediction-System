@@ -25,11 +25,12 @@ A full-stack machine learning web application that predicts the **basket value**
 |---|---|
 | Frontend | React 18, Vite, Tailwind CSS, React Router v6 |
 | Backend | Django 4.2, Django REST Framework 3.14 |
-| Database | SQLite (development) |
+| Database | PostgreSQL 15 (production-ready) |
 | ML Algorithm | XGBoost Regressor (conceptual integration) |
 | Auth | DRF Token Authentication |
 | HTTP Client | Axios |
 | Metrics | NumPy (RMSE, MAE, R²) |
+| Deployment | Docker + Docker Compose |
 
 ---
 
@@ -164,7 +165,10 @@ git clone https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-Syste
 cd Retail-Basket-Value-Prediction-System
 ```
 
-### 2. Backend setup
+### 2. Install PostgreSQL
+Follow instructions in `SETUP_POSTGRESQL.txt` to install and configure PostgreSQL database.
+
+### 3. Backend setup
 ```bash
 cd backend
 
@@ -176,9 +180,8 @@ venv\Scripts\activate        # Windows
 # Install dependencies
 pip install -r requirements.txt
 
-# Create .env file (copy from example)
-copy .env.example .env       # Windows
-# cp .env.example .env       # macOS/Linux
+# Create .env file (already configured with PostgreSQL)
+# Verify DB credentials in backend/.env match your PostgreSQL setup
 
 # Run migrations
 python manage.py migrate
@@ -188,7 +191,7 @@ python manage.py runserver
 ```
 Backend runs at: `http://localhost:8000`
 
-### 3. Frontend setup
+### 4. Frontend setup
 ```bash
 # From project root
 npm install
@@ -196,7 +199,19 @@ npm run dev
 ```
 Frontend runs at: `http://localhost:3001`
 
-### 4. (Optional) Reset all data
+### 5. (Optional) Docker Deployment
+```bash
+# Start all services (PostgreSQL + Backend + Frontend)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### 6. (Optional) Reset all data
 ```bash
 cd backend
 python manage.py reset_data --confirm
