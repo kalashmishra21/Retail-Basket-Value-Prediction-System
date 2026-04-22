@@ -52,14 +52,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://51.20.70.80:8000
     container_name: retail_basket_frontend
     ports:
       - "3001:3001"
-    volumes:
-      - ./src:/app/src
-      - ./public:/app/public
-    environment:
-      - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
 
