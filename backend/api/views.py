@@ -45,8 +45,13 @@ User = get_user_model()
 # Simple endpoint to verify backend is running
 # Used by Docker, AWS ELB, monitoring tools
 # Returns 200 OK with service status
+# CSRF exempt because it's a public health check endpoint
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def health_check(request):
     """
     Health check endpoint for monitoring and load balancers.
