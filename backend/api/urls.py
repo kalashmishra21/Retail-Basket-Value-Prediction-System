@@ -28,9 +28,13 @@ urlpatterns = [
     # POST /api/auth/register/ - Create new user account
     # POST /api/auth/login/ - Authenticate and get token
     # POST /api/auth/logout/ - Destroy session (requires auth)
+    # POST /api/auth/forgot-password/ - Send password reset email
+    # POST /api/auth/reset-password/ - Reset user password
     path('auth/register/', views.register_user, name='register'),
     path('auth/login/', views.login_user, name='login'),
     path('auth/logout/', views.logout_user, name='logout'),
+    path('auth/forgot-password/', views.forgot_password, name='forgot-password'),
+    path('auth/reset-password/', views.reset_password, name='reset-password'),
     
     # User Profile Management Endpoints
     # GET/PUT /api/user/profile/ - View/update user info

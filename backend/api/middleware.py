@@ -58,7 +58,7 @@ class APIMonitoringMiddleware(MiddlewareMixin):
                         endpoint=request.path,
                         method=request.method,
                         status_code=response.status_code,
-                        response_time=round(response_time, 2),
+                        response_time_ms=round(response_time, 2),
                         error_message=None if response.status_code < 400 else f"HTTP {response.status_code}"
                     )
                 except Exception as e:
@@ -90,7 +90,7 @@ class APIMonitoringMiddleware(MiddlewareMixin):
                         endpoint=request.path,
                         method=request.method,
                         status_code=500,
-                        response_time=round(response_time, 2),
+                        response_time_ms=round(response_time, 2),
                         error_message=str(exception)
                     )
                 except Exception as e:

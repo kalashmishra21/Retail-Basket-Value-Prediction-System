@@ -11,6 +11,7 @@ import History from './pages/History'
 import Explainability from './pages/Explainability'
 import Metrics from './pages/Metrics'
 import Visualization from './pages/Visualization'
+import ResetPassword from './pages/ResetPassword'
 
 /**
  * Main App component with routing configuration and theme provider
@@ -23,6 +24,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/upload" element={<UploadData />} />

@@ -28,6 +28,14 @@ from .serializers import (
     DatasetSerializer, PredictionSerializer, ModelMetricsSerializer,
     NotificationSettingsSerializer
 )
+import os
+import requests
+import logging
+from django.conf import settings
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
 import uuid
 import numpy as np
 
@@ -904,3 +912,283 @@ def visualization_summary(request):
 Monitoring module removed completely
 No dependency remains in system
 """
+
+
+# Forgot Password API View
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    """
+    Send password reset email using Brevo API
+    
+    Request body:
+    {
+        "email": "user@example.com"
+    }
+    
+    Returns:
+    - 200: Email sent successfully
+    - 404: User not found
+    - 500: Email sending failed
+    """
+    email = request.data.get('email')
+    
+    if not email:
+        logger.error('Forgot password: No email provided')
+        return Response(
+            {'error': 'Email is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if user exists
+    User = get_user_model()
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        logger.warning(f'Forgot password: User not found for email {email}')
+        return Response(
+            {'error': 'No account found with this email address'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Get Brevo credentials from environment
+    brevo_api_key = os.getenv('BREVO_API_KEY')
+    brevo_email = os.getenv('BREVO_EMAIL')
+    admin_email = os.getenv('ADMIN_EMAIL', 'kalashmish917@gmail.com')
+    test_mode = os.getenv('EMAIL_TEST_MODE', 'False').lower() == 'true'
+    
+    logger.info(f'Brevo API Key (first 20 chars): {brevo_api_key[:20] if brevo_api_key else "NOT FOUND"}...')
+    logger.info(f'Brevo Email: {brevo_email}')
+    logger.info(f'Admin Email: {admin_email}')
+    logger.info(f'Test Mode: {test_mode}')
+    
+    # Test mode - simulate email sending
+    if test_mode:
+        logger.info(f'TEST MODE: Simulating email send to {email}')
+        logger.info(f'TEST MODE: Reset link would be: http://localhost:3001/reset-password?email={email}')
+        return Response(
+            {
+                'success': True,
+                'message': 'Password reset instructions have been sent to your email (TEST MODE)',
+                'test_mode': True
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    if not brevo_api_key or not brevo_email:
+        logger.error('Forgot password: Brevo credentials not configured')
+        return Response(
+            {'error': 'Email service not configured. Please contact administrator.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # Prepare email content
+    reset_link = f"http://localhost:3001/reset-password?email={email}"  # In production, use actual domain
+    
+    email_data = {
+        "sender": {
+            "name": "Retail Basket Predictor",
+            "email": brevo_email
+        },
+        "to": [
+            {
+                "email": email,
+                "name": user.get_full_name() or user.username
+            }
+        ],
+        "subject": "Password Reset Request - Retail Basket Predictor",
+        "htmlContent": f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                .button {{ display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔐 Password Reset Request</h1>
+                </div>
+                <div class="content">
+                    <p>Hello {user.get_full_name() or user.username},</p>
+                    <p>We received a request to reset your password for your Retail Basket Predictor account.</p>
+                    <p>Click the button below to reset your password:</p>
+                    <center>
+                        <a href="{reset_link}" class="button">Reset Password</a>
+                    </center>
+                    <p><strong>Note:</strong> This link will expire in 24 hours for security reasons.</p>
+                    <p>If you didn't request this password reset, please ignore this email or contact support if you have concerns.</p>
+                    <p>Best regards,<br>Retail Basket Predictor Team</p>
+                </div>
+                <div class="footer">
+                    <p>© 2024 Retail Basket Value Prediction System. All rights reserved.</p>
+                    <p>This is an automated email. Please do not reply.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    }
+    
+    # Send email via Brevo API
+    try:
+        logger.info(f'Attempting to send password reset email to {email}')
+        
+        response = requests.post(
+            'https://api.brevo.com/v3/smtp/email',
+            headers={
+                'accept': 'application/json',
+                'api-key': brevo_api_key,
+                'content-type': 'application/json'
+            },
+            json=email_data,
+            timeout=10
+        )
+        
+        if response.status_code == 201:
+            brevo_response = response.json()
+            print('='*50)
+            print('✅ EMAIL SENT SUCCESSFULLY!')
+            print(f'To: {email}')
+            print(f'Message ID: {brevo_response.get("messageId", "N/A")}')
+            print(f'Brevo Response: {brevo_response}')
+            print('='*50)
+            logger.info(f'Password reset email sent successfully to {email}')
+            logger.info(f'Brevo response: {brevo_response}')
+            return Response(
+                {
+                    'success': True,
+                    'message': 'Password reset instructions have been sent to your email',
+                    'messageId': brevo_response.get('messageId')
+                },
+                status=status.HTTP_200_OK
+            )
+        else:
+            print('='*50)
+            print('❌ EMAIL SENDING FAILED!')
+            print(f'Status Code: {response.status_code}')
+            print(f'Error: {response.text}')
+            print('='*50)
+            logger.error(f'Brevo API error: {response.status_code} - {response.text}')
+            return Response(
+                {'error': f'Failed to send email. Error: {response.text}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+    except requests.exceptions.Timeout:
+        logger.error('Brevo API timeout')
+        return Response(
+            {'error': 'Email service timeout. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error(f'Brevo API request failed: {str(e)}')
+        return Response(
+            {'error': f'Failed to send email. Please try again later.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    except Exception as e:
+        logger.error(f'Unexpected error in forgot_password: {str(e)}')
+        return Response(
+            {'error': 'An unexpected error occurred. Please contact support.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# Reset Password API View
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    """
+    Reset user password
+    
+    Request body:
+    {
+        "email": "user@example.com",
+        "password": "newpassword123"
+    }
+    
+    Returns:
+    - 200: Password reset successfully
+    - 404: User not found
+    - 400: Invalid request
+    """
+    email = request.data.get('email')
+    password = request.data.get('password')
+    
+    if not email or not password:
+        logger.error('Reset password: Missing email or password')
+        return Response(
+            {'error': 'Email and password are required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate password length
+    if len(password) < 8:
+        return Response(
+            {'error': 'Password must be at least 8 characters'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if user exists
+    User = get_user_model()
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        logger.warning(f'Reset password: User not found for email {email}')
+        return Response(
+            {'error': 'No account found with this email address'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    try:
+        from django.db import transaction
+        
+        # Update password with explicit transaction
+        with transaction.atomic():
+            old_password_hash = user.password
+            user.set_password(password)
+            user.save(update_fields=['password'])
+            
+            # Force commit
+            transaction.on_commit(lambda: None)
+        
+        # Verify password was actually changed
+        user.refresh_from_db()
+        new_password_hash = user.password
+        
+        print('='*50)
+        print('✅ PASSWORD RESET SUCCESSFULLY!')
+        print(f'User: {email}')
+        print(f'Username: {user.username}')
+        print(f'Old hash: {old_password_hash[:20]}...')
+        print(f'New hash: {new_password_hash[:20]}...')
+        print(f'Hash changed: {old_password_hash != new_password_hash}')
+        
+        # Test if new password works
+        from django.contrib.auth import authenticate
+        test_user = authenticate(username=user.username, password=password)
+        print(f'New password authentication test: {"✅ SUCCESS" if test_user else "❌ FAILED"}')
+        print('='*50)
+        
+        logger.info(f'Password reset successfully for user: {email}')
+        
+        return Response(
+            {
+                'success': True,
+                'message': 'Password has been reset successfully. You can now login with your new password.'
+            },
+            status=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to reset password for {email}: {str(e)}')
+        return Response(
+            {'error': 'Failed to reset password. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

@@ -234,14 +234,14 @@ class APIRequestLog(models.Model):
     - endpoint: API path (e.g., /api/predictions/)
     - method: HTTP method (GET, POST, PUT, DELETE)
     - status_code: HTTP status code (200, 404, 500, etc.)
-    - response_time: Time taken to process request (milliseconds)
+    - response_time_ms: Time taken to process request (milliseconds)
     - error_message: Error details if status_code >= 400
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     endpoint = models.CharField(max_length=255)
     method = models.CharField(max_length=10)
     status_code = models.IntegerField()
-    response_time = models.FloatField(help_text='Response time in milliseconds')
+    response_time_ms = models.FloatField(help_text='Response time in milliseconds')
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     error_message = models.TextField(blank=True, null=True)
     

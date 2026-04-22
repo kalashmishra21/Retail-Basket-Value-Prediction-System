@@ -115,7 +115,6 @@ const Signup = () => {
       // Navigate to dashboard
       navigate('/dashboard')
     } catch (error) {
-      console.error('Signup failed:', error)
       const errorMsg = error.response?.data?.email?.[0] || 
                        error.response?.data?.username?.[0] ||
                        'Signup failed. Please try again.'

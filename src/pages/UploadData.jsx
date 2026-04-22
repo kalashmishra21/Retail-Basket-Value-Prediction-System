@@ -52,75 +52,50 @@ const UploadData = () => {
         const text = e.target.result
         const lines = text.split('\n').filter(l => l.trim() !== '')
         
-        console.log('=== CSV PARSING START ===')
-        console.log('Total lines (including header):', lines.length)
-        
         if (lines.length < 2) {
-          console.log('ERROR: Not enough lines in CSV')
           resolve({ totalRows: 0, featureCount: 0, nullRatio: 0, duplicates: 0 })
           return
         }
 
-        // Parse header to get feature count
         const header = lines[0]
         const featureCount = header.split(',').length
-        console.log('Feature count:', featureCount)
-        console.log('Header:', header)
         
-        const dataLines = lines.slice(1)   // exclude header
+        const dataLines = lines.slice(1)
         const sampledRows = dataLines.length
-        console.log('Data rows:', sampledRows)
 
-        // Scale row count for large files (we only read 2MB slice)
         const scaledRows = file.size > 2 * 1024 * 1024
           ? Math.round(sampledRows * (file.size / (2 * 1024 * 1024)))
           : sampledRows
 
-        // Null ratio: count empty/missing cells in sampled rows
         let nullCells = 0
         let totalCells = 0
-        let sampleRowsChecked = 0
         
-        dataLines.forEach((line, idx) => {
+        dataLines.forEach((line) => {
           const cells = line.split(',')
           totalCells += cells.length
           
-          cells.forEach((cell, cellIdx) => {
+          cells.forEach((cell) => {
             const trimmed = cell.trim()
-            // Check for various null representations
             const isNull = (
-              trimmed === '' ||                    // Empty
-              trimmed.toLowerCase() === 'null' ||  // "null"
-              trimmed.toLowerCase() === 'na' ||    // "NA"
-              trimmed.toLowerCase() === 'n/a' ||   // "N/A"
-              trimmed === 'NaN' ||                 // "NaN"
-              trimmed === 'None' ||                // "None"
-              trimmed === '-' ||                   // "-"
-              trimmed === '?' ||                   // "?"
-              trimmed === 'undefined'              // "undefined"
+              trimmed === '' ||
+              trimmed.toLowerCase() === 'null' ||
+              trimmed.toLowerCase() === 'na' ||
+              trimmed.toLowerCase() === 'n/a' ||
+              trimmed === 'NaN' ||
+              trimmed === 'None' ||
+              trimmed === '-' ||
+              trimmed === '?' ||
+              trimmed === 'undefined'
             )
             
-            if (isNull) {
-              nullCells++
-              if (sampleRowsChecked < 3) {
-                console.log(`Row ${idx + 1}, Cell ${cellIdx + 1}: NULL detected ("${cell}")`)
-              }
-            }
+            if (isNull) nullCells++
           })
-          
-          if (idx < 3) sampleRowsChecked++
         })
         
         const nullRatio = totalCells > 0
           ? parseFloat(((nullCells / totalCells) * 100).toFixed(2))
           : 0
 
-        console.log('Null Detection Results:')
-        console.log('- Total cells:', totalCells)
-        console.log('- Null cells:', nullCells)
-        console.log('- Null ratio:', nullRatio + '%')
-
-        // Duplicate count: exact string match between rows
         const seen = new Set()
         let duplicates = 0
         dataLines.forEach(line => {
@@ -132,16 +107,10 @@ const UploadData = () => {
           }
         })
         duplicates = Math.min(duplicates, Math.max(0, sampledRows - 1))
-        console.log('Duplicates found:', duplicates)
-
-        console.log('=== FINAL STATS ===')
-        console.log({ totalRows: scaledRows, featureCount, nullRatio, duplicates })
-        console.log('')
 
         resolve({ totalRows: scaledRows, featureCount, nullRatio, duplicates })
       }
       reader.onerror = () => {
-        console.error('ERROR: Failed to read file')
         resolve({ totalRows: 0, featureCount: 0, nullRatio: 0, duplicates: 0 })
       }
       reader.readAsText(file.slice(0, 2 * 1024 * 1024))
@@ -175,12 +144,6 @@ const UploadData = () => {
         setIsProcessing(false)
         setDataStats({ totalRows: stats.totalRows, featureCount: stats.featureCount })
         setQuality({ nullRatio: stats.nullRatio, duplicates: stats.duplicates, uploadedAt })
-        console.log('Quality Stats Set:', { 
-          nullRatio: stats.nullRatio, 
-          duplicates: stats.duplicates, 
-          totalRows: stats.totalRows,
-          featureCount: stats.featureCount 
-        })
       }
     }, 100)
   }
@@ -276,86 +239,50 @@ const UploadData = () => {
                 // Access quality data from state (nullRatio, duplicates)
                 let baseConfidence = 95
                 
-                console.log('=== CONFIDENCE CALCULATION START ===')
-                console.log('Input Data:', {
-                  nullRatio: quality.nullRatio,
-                  duplicates: quality.duplicates,
-                  totalRows: dataStats.totalRows,
-                  featureCount: dataStats.featureCount
-                })
-                
-                // Reduce confidence based on null ratio (max -25 points)
                 const nullRatio = quality.nullRatio || 0
                 if (nullRatio > 40) {
                   baseConfidence -= 25
-                  console.log(`Null ratio ${nullRatio}% > 40% → -25 points`)
                 } else if (nullRatio > 30) {
                   baseConfidence -= 20
-                  console.log(`Null ratio ${nullRatio}% > 30% → -20 points`)
                 } else if (nullRatio > 20) {
                   baseConfidence -= 15
-                  console.log(`Null ratio ${nullRatio}% > 20% → -15 points`)
                 } else if (nullRatio > 10) {
                   baseConfidence -= 10
-                  console.log(`Null ratio ${nullRatio}% > 10% → -10 points`)
                 } else if (nullRatio > 5) {
                   baseConfidence -= 5
-                  console.log(`Null ratio ${nullRatio}% > 5% → -5 points`)
                 }
                 
-                // Reduce confidence based on duplicates (max -15 points)
                 const duplicates = quality.duplicates || 0
                 const duplicateRatio = dataStats.totalRows > 0 ? (duplicates / dataStats.totalRows) * 100 : 0
                 if (duplicateRatio > 30) {
                   baseConfidence -= 15
-                  console.log(`Duplicate ratio ${duplicateRatio.toFixed(2)}% > 30% → -15 points`)
                 } else if (duplicateRatio > 20) {
                   baseConfidence -= 10
-                  console.log(`Duplicate ratio ${duplicateRatio.toFixed(2)}% > 20% → -10 points`)
                 } else if (duplicateRatio > 10) {
                   baseConfidence -= 5
-                  console.log(`Duplicate ratio ${duplicateRatio.toFixed(2)}% > 10% → -5 points`)
                 } else if (duplicateRatio > 5) {
                   baseConfidence -= 3
-                  console.log(`Duplicate ratio ${duplicateRatio.toFixed(2)}% > 5% → -3 points`)
                 }
                 
-                // Reduce confidence for small datasets (max -20 points)
                 if (dataStats.totalRows < 30) {
                   baseConfidence -= 20
-                  console.log(`Total rows ${dataStats.totalRows} < 30 → -20 points`)
                 } else if (dataStats.totalRows < 50) {
                   baseConfidence -= 15
-                  console.log(`Total rows ${dataStats.totalRows} < 50 → -15 points`)
                 } else if (dataStats.totalRows < 100) {
                   baseConfidence -= 10
-                  console.log(`Total rows ${dataStats.totalRows} < 100 → -10 points`)
                 } else if (dataStats.totalRows < 200) {
                   baseConfidence -= 5
-                  console.log(`Total rows ${dataStats.totalRows} < 200 → -5 points`)
                 }
                 
-                // Reduce confidence for low feature count (max -15 points)
                 if (dataStats.featureCount < 4) {
                   baseConfidence -= 15
-                  console.log(`Feature count ${dataStats.featureCount} < 4 → -15 points`)
                 } else if (dataStats.featureCount < 5) {
                   baseConfidence -= 10
-                  console.log(`Feature count ${dataStats.featureCount} < 5 → -10 points`)
                 } else if (dataStats.featureCount < 7) {
                   baseConfidence -= 5
-                  console.log(`Feature count ${dataStats.featureCount} < 7 → -5 points`)
                 }
                 
-                console.log('Base confidence after penalties:', baseConfidence)
-                
-                // Ensure confidence stays within realistic bounds (50-99%)
                 const calculatedConfidence = Math.max(50, Math.min(99, baseConfidence))
-                
-                console.log('=== FINAL CONFIDENCE:', calculatedConfidence, '===')
-                console.log('')
-                
-                // Use deterministic predicted value based on dataset size (no Math.random)
                 const baseValue = (dataStats.totalRows * 0.03 + dataStats.featureCount * 12).toFixed(2)
                 
                 const predictionResponse = await predictionAPI.create({
@@ -366,7 +293,6 @@ const UploadData = () => {
                 })
                 setTimeout(() => navigate('/prediction-result', { state: { predictionId: predictionResponse.data.id } }), 800)
               } catch (error) {
-                console.error('Failed to save prediction:', error)
                 alert('Prediction completed but failed to save. Please try again.')
                 setShowProcessing(false)
               }
@@ -377,7 +303,6 @@ const UploadData = () => {
 
       processStep()
     } catch (error) {
-      console.error('Failed to process prediction:', error)
       alert('Failed to process prediction. Please try again.')
       setShowProcessing(false)
     }
