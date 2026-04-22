@@ -19,19 +19,22 @@ ENV VITE_API_URL=$VITE_API_URL
 # Build the app
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine
+# Production stage with Nginx
+FROM nginx:alpine
 
-WORKDIR /app
+WORKDIR /usr/share/nginx/html
 
-# Install serve to run the built app
-RUN npm install -g serve
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/
 
 # Copy built files from builder
-COPY --from=builder /app/dist /app/dist
+COPY --from=builder /app/dist .
 
 # Expose port
 EXPOSE 3001
 
-# Run the app
-CMD ["serve", "-s", "dist", "-l", "3001"]
+# Run nginx
+CMD ["nginx", "-g", "daemon off;"]

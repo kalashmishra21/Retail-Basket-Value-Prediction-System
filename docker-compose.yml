@@ -47,13 +47,11 @@ services:
       retries: 3
       start_period: 40s
 
-  # React Frontend (Development)
+  # React Frontend with Nginx
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://51.20.70.80:8000
     container_name: retail_basket_frontend
     ports:
       - "3001:3001"

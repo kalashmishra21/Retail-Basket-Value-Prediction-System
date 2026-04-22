@@ -13,10 +13,10 @@
 
 import axios from 'axios'
 
-// Use environment variable for API URL, fallback to localhost for development
+// Use environment variable for API URL, fallback to relative path for nginx proxy
 const API_BASE_URL = import.meta.env.VITE_API_URL 
   ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api'
+  : '/api'  // Nginx will proxy this to backend
 
 /**
  * Create Axios instance with default configuration
