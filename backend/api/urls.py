@@ -24,6 +24,12 @@ router.register(r'datasets', views.DatasetViewSet, basename='dataset')
 router.register(r'predictions', views.PredictionViewSet, basename='prediction')
 
 urlpatterns = [
+    # Health Check Endpoint
+    # GET /api/health/ - Check if backend is running
+    # Used by Docker healthcheck, AWS ELB, monitoring tools
+    # Returns 200 OK with service status and database connection
+    path('health/', views.health_check, name='health-check'),
+    
     # Authentication Endpoints
     # POST /api/auth/register/ - Create new user account
     # POST /api/auth/login/ - Authenticate and get token

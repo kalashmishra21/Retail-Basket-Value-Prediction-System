@@ -238,8 +238,8 @@ CORS_ALLOWED_ORIGINS=http://YOUR_EC2_PUBLIC_IP:3001,http://localhost:3001
 CSRF_TRUSTED_ORIGINS=http://YOUR_EC2_PUBLIC_IP:3001,http://localhost:3001
 
 # Email Settings (Brevo)
-BREVO_API_KEY=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
-BREVO_EMAIL=rakeshmish917@gmail.com
+BREVO_API_KEY=your-brevo-api-key-here
+BREVO_EMAIL=your-email@example.com
 ```
 
 **IMPORTANT**: Replace `YOUR_EC2_PUBLIC_IP` with actual IP (e.g., 54.123.45.67)

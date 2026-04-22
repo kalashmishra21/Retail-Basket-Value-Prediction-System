@@ -41,6 +41,33 @@ import numpy as np
 
 User = get_user_model()
 
+# Health Check Endpoint
+# Simple endpoint to verify backend is running
+# Used by Docker, AWS ELB, monitoring tools
+# Returns 200 OK with service status
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    """
+    Health check endpoint for monitoring and load balancers.
+    Returns service status and basic system info.
+    """
+    from django.db import connection
+    
+    # Check database connection
+    db_status = "healthy"
+    try:
+        connection.ensure_connection()
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+    
+    return Response({
+        'status': 'ok',
+        'service': 'Retail Basket Value Prediction API',
+        'database': db_status,
+        'version': '1.0.0'
+    }, status=status.HTTP_200_OK)
+
 # User Registration Endpoint
 # Creates new user account with hashed password
 # Validates password strength and email uniqueness
