@@ -4,82 +4,69 @@ services:
   # PostgreSQL Database
   db:
     image: postgres:15-alpine
-    container_name: retail_postgres
-    restart: always
+    container_name: retail_basket_db
     environment:
       POSTGRES_DB: retail_basket_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - retail_network
 
   # Django Backend
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: retail_backend
-    restart: always
+    container_name: retail_basket_backend
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120"
-    volumes:
-      - ./backend:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    ports:
-      - "8000:8000"
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
     environment:
       - DEBUG=False
-      - SECRET_KEY=django-production-secret-key-change-this
+      - USE_POSTGRES=True
       - DB_NAME=retail_basket_db
       - DB_USER=postgres
       - DB_PASSWORD=postgres123
       - DB_HOST=db
       - DB_PORT=5432
+      - SECRET_KEY=your-secret-key-change-this-in-production
       - ALLOWED_HOSTS=localhost,127.0.0.1,backend
       - CORS_ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
-      - CSRF_TRUSTED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - retail_network
 
-  # React Frontend
+  # React Frontend (Development)
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: retail_frontend
-    restart: always
+    container_name: retail_basket_frontend
     ports:
       - "3001:3001"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
     environment:
-      - NODE_ENV=production
       - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
-    networks:
-      - retail_network
 
 volumes:
   postgres_data:
-    driver: local
   static_volume:
   media_volume:
-
-networks:
-  retail_network:
-    driver: bridge
