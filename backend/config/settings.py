@@ -61,8 +61,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database Configuration
 # Use PostgreSQL in production, SQLite for development
 USE_POSTGRES = os.getenv('USE_POSTGRES', 'False') == 'True'
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-if USE_POSTGRES:
+if DATABASE_URL:
+    # Parse DATABASE_URL for Render/Heroku deployment
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif USE_POSTGRES:
     # PostgreSQL for production-ready deployment
     DATABASES = {
         'default': {
@@ -111,23 +122,48 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'api.User'
 
-# CORS Settings - Production ready
-CORS_ALLOWED_ORIGINS = os.getenv(
-    'CORS_ALLOWED_ORIGINS',
-    'http://localhost:3001,http://127.0.0.1:3001'
-).split(',')
+# CORS Settings - Allow all origins for production deployment
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (for testing/deployment)
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
 # Session / Cookie Settings
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = not DEBUG  # True in production with HTTPS
-CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SAMESITE = None  # Allow cross-origin cookies
+SESSION_COOKIE_SECURE = False  # Set to True only when using HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 1209600  # 2 weeks
+
+CSRF_COOKIE_SAMESITE = None  # Allow cross-origin CSRF
+CSRF_COOKIE_SECURE = False  # Set to True only when using HTTPS
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    'CSRF_TRUSTED_ORIGINS',
-    'http://localhost:3001,http://127.0.0.1:3001'
-).split(',')
+CSRF_TRUSTED_ORIGINS = [
+    'http://51.20.70.80:3001',
+    'http://51.20.70.80:8000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+]
+
+# Additional CSRF settings for production without HTTPS
+CSRF_COOKIE_DOMAIN = None
+CSRF_USE_SESSIONS = False
 
 # REST Framework Settings
 REST_FRAMEWORK = {
