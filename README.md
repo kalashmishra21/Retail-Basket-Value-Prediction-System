@@ -19,12 +19,15 @@ A production-ready, full-stack machine learning web application that predicts re
 > Deployed on AWS EC2 using Docker containers with PostgreSQL database
 
 ### Admin Access
-To create a superuser for admin panel access:
+**Username**: `Kalash`  
+**Email**: `kalashji21@gmail.com`  
+**Admin Panel**: [http://51.20.70.80:8000/admin/](http://51.20.70.80:8000/admin/)
+
+To create additional admin users on EC2:
 ```bash
 # On EC2 instance
 docker compose exec backend python manage.py createsuperuser
 ```
-Then login at: [http://51.20.70.80:8000/admin/](http://51.20.70.80:8000/admin/)
 
 ---
 
@@ -634,6 +637,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👨‍💻 Author
 
 **Kalash Mishra**
+- Email: kalashji21@gmail.com
 - GitHub: [@kalashmishra21](https://github.com/kalashmishra21)
 - LinkedIn: [Kalash Mishra](https://www.linkedin.com/in/kalashmishra21/)
 
@@ -651,7 +655,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For issues and questions:
 - Open an [Issue](https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System/issues)
-- Email: kalash.p24@medhaviskillsuniversity.edu.in
+- Email: kalashji21@gmail.com
 
 ---
 

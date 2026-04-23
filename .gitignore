@@ -6,10 +6,11 @@ build/
 
 # ── Environment variables (NEVER commit secrets) ──────────────────────────────
 .env
-.env.example
 .env.local
 .env.production
 backend/.env
+backend/.env.local
+backend/.env.docker
 
 # ── Python / Django ───────────────────────────────────────────────────────────
 __pycache__/
