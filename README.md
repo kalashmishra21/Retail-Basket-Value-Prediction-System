@@ -12,8 +12,7 @@ A production-ready, full-stack machine learning web application that predicts re
 ## 🌐 Live Deployment
 
 **Frontend**: [http://51.20.70.80:3001](http://51.20.70.80:3001)  
-**Backend API**: [http://51.20.70.80:8000](http://51.20.70.80:8000)  
-**Admin Panel**: [http://51.20.70.80:8000/admin/](http://51.20.70.80:8000/admin/)  
+**Backend API**: [http://51.20.70.80:8000](http://51.20.70.80:8000)
 **Health Check**: [http://51.20.70.80:8000/api/health/](http://51.20.70.80:8000/api/health/)
 
 > Deployed on AWS EC2 using Docker containers with PostgreSQL database
@@ -21,13 +20,6 @@ A production-ready, full-stack machine learning web application that predicts re
 ### Admin Access
 **Username**: `Kalash`  
 **Email**: `kalashji21@gmail.com`  
-**Admin Panel**: [http://51.20.70.80:8000/admin/](http://51.20.70.80:8000/admin/)
-
-To create additional admin users on EC2:
-```bash
-# On EC2 instance
-docker compose exec backend python manage.py createsuperuser
-```
 
 ---
 
@@ -283,8 +275,7 @@ python manage.py createsuperuser
 # Start Django server
 python manage.py runserver
 ```
-✅ Backend running at: `http://localhost:8000`  
-✅ Admin panel at: `http://localhost:8000/admin/`
+✅ Backend running at: `http://localhost:8000`
 
 ### 3️⃣ Frontend Setup
 ```bash
@@ -553,68 +544,6 @@ python manage.py test
 ```bash
 npm test
 ```
-
-### Manual Testing Checklist
-- [ ] User registration and login
-- [ ] Forgot password email delivery
-- [ ] Password reset functionality
-- [ ] CSV file upload and validation
-- [ ] Prediction generation with confidence scores
-- [ ] Dashboard metrics display
-- [ ] Visualization charts rendering
-- [ ] Dark/Light mode toggle
-- [ ] API key generation
-- [ ] Prediction history pagination
-- [ ] CSV download functionality
-
----
-
-## 🚢 Deployment
-
-### Docker Deployment (Production)
-
-The application is deployed on AWS EC2 using Docker containers:
-
-```bash
-# On EC2 instance
-git clone https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System.git
-cd Retail-Basket-Value-Prediction-System
-
-# Configure production environment
-cp backend/.env.example backend/.env
-# Edit backend/.env with production credentials
-
-cp .env.example .env.production
-# Edit .env.production with production API URL
-
-# Start all services
-docker compose up -d
-
-# Check status
-docker compose ps
-
-# View logs
-docker compose logs -f
-```
-
-### Environment Variables
-
-**Backend (.env)**:
-```env
-DATABASE_URL=postgresql://user:password@db:5432/retail_basket_db
-SECRET_KEY=your-secret-key
-DEBUG=False
-ALLOWED_HOSTS=51.20.70.80,localhost
-BREVO_API_KEY=your-brevo-api-key
-EMAIL_FROM=your-email@example.com
-```
-
-**Frontend (.env.production)**:
-```env
-VITE_API_URL=http://51.20.70.80:8000
-```
-
----
 
 ## 🤝 Contributing
 
