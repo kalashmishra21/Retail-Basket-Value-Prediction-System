@@ -6,6 +6,16 @@ A production-ready, full-stack machine learning web application that predicts re
 [![Django](https://img.shields.io/badge/Django-4.2-green.svg)](https://www.djangoproject.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB.svg)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-success.svg)](http://51.20.70.80:3001)
+
+## 🌐 Live Deployment
+
+**Frontend**: [http://51.20.70.80:3001](http://51.20.70.80:3001)  
+**Backend API**: [http://51.20.70.80:8000](http://51.20.70.80:8000)  
+**Health Check**: [http://51.20.70.80:8000/api/health/](http://51.20.70.80:8000/api/health/)
+
+> Deployed on AWS EC2 using Docker containers with PostgreSQL database
 
 ---
 
@@ -75,6 +85,9 @@ This system provides those predictions with **95%+ confidence** and explains whi
 - Real-time updates
 - Interactive charts
 - Clean, modern UI
+- Forgot password with email reset
+- Password strength validation
+- Session management
 
 ---
 
@@ -97,6 +110,8 @@ This system provides those predictions with **95%+ confidence** and explains whi
 | **PostgreSQL 15** | Production database |
 | **NumPy** | Numerical computations (RMSE, MAE, R²) |
 | **Gunicorn** | WSGI HTTP server |
+| **Brevo (Sendinblue)** | Email service for password reset |
+| **dj-database-url** | Database URL parsing |
 
 ### Machine Learning
 | Technology | Purpose |
@@ -110,6 +125,8 @@ This system provides those predictions with **95%+ confidence** and explains whi
 | **Docker** | Containerization |
 | **Docker Compose** | Multi-container orchestration |
 | **WhiteNoise** | Static file serving |
+| **AWS EC2** | Cloud hosting |
+| **Nginx** | Reverse proxy and static file serving |
 
 ---
 
@@ -120,11 +137,12 @@ Retail-Basket-Value-Prediction-System/
 │
 ├── backend/                      # Django backend
 │   ├── api/
-│   │   ├── models.py            # Database models
-│   │   ├── views.py             # API endpoints
+│   │   ├── models.py            # Database models (User, Prediction, PredictionFeatures, APIRequestLog)
+│   │   ├── views.py             # API endpoints (auth, predictions, metrics, visualization)
 │   │   ├── serializers.py       # Data validation
 │   │   ├── urls.py              # URL routing
-│   │   ├── middleware.py        # Request logging
+│   │   ├── middleware.py        # Request logging & monitoring
+│   │   ├── authentication.py    # Custom token authentication
 │   │   └── management/
 │   │       └── commands/
 │   │           └── reset_data.py # Database reset utility
@@ -142,7 +160,11 @@ Retail-Basket-Value-Prediction-System/
 │   │   ├── Explainability.jsx   # Feature importance
 │   │   ├── Metrics.jsx          # Performance metrics
 │   │   ├── Visualization.jsx    # Charts & graphs
-│   │   └── Settings.jsx         # User settings
+│   │   ├── Settings.jsx         # User settings
+│   │   ├── Login.jsx            # Login with forgot password
+│   │   ├── Signup.jsx           # User registration
+│   │   ├── ResetPassword.jsx    # Password reset page
+│   │   └── PredictionResult.jsx # Individual prediction details
 │   ├── services/
 │   │   └── api.js               # API client
 │   ├── context/
@@ -152,8 +174,12 @@ Retail-Basket-Value-Prediction-System/
 ├── Data/
 │   └── Online Retail.csv        # Sample dataset
 │
-├── docker-compose.yml           # Docker orchestration
-├── Dockerfile                   # Frontend container
+├── docker-compose.yml           # Docker orchestration (PostgreSQL + Django + React)
+├── Dockerfile                   # Frontend container (Nginx + React build)
+├── backend/Dockerfile           # Backend container (Gunicorn + Django)
+├── nginx.conf                   # Nginx configuration
+├── .env.development             # Development environment variables
+├── .env.production              # Production environment variables
 ├── package.json                 # Node dependencies
 ├── tailwind.config.js           # Tailwind configuration
 ├── vite.config.js               # Vite configuration
@@ -164,7 +190,47 @@ Retail-Basket-Value-Prediction-System/
 
 ## 🚀 Setup Instructions
 
-### Prerequisites
+### Option 1: Quick Start with Docker (Recommended)
+
+#### Prerequisites
+- **Docker** and **Docker Compose** installed
+- **Git**
+
+#### Steps
+```bash
+# Clone repository
+git clone https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System.git
+cd Retail-Basket-Value-Prediction-System
+
+# Configure environment variables
+cp backend/.env.example backend/.env
+# Edit backend/.env with your settings
+
+# Start all services (PostgreSQL + Django + React)
+docker compose up -d
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f
+```
+
+✅ **Application running at:**
+- Frontend: `http://localhost:3001`
+- Backend: `http://localhost:8000`
+- Database: `localhost:5432`
+
+#### Stop Services
+```bash
+docker compose down
+```
+
+---
+
+### Option 2: Local Development Setup
+
+#### Prerequisites
 - **Python 3.10+**
 - **Node.js 18+**
 - **PostgreSQL 15+**
@@ -176,13 +242,7 @@ git clone https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-Syste
 cd Retail-Basket-Value-Prediction-System
 ```
 
-### 2️⃣ Setup PostgreSQL Database
-Follow the instructions in `SETUP_POSTGRESQL.txt` to:
-- Install PostgreSQL
-- Create database: `retail_basket_db`
-- Create user with password
-
-### 3️⃣ Backend Setup
+### 2️⃣ Backend Setup
 ```bash
 cd backend
 
@@ -199,7 +259,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Configure environment variables
-# Edit backend/.env with your PostgreSQL credentials
+cp .env.example .env
+# Edit .env with your PostgreSQL credentials
 
 # Run database migrations
 python manage.py migrate
@@ -212,7 +273,7 @@ python manage.py runserver
 ```
 ✅ Backend running at: `http://localhost:8000`
 
-### 4️⃣ Frontend Setup
+### 3️⃣ Frontend Setup
 ```bash
 # Open new terminal, navigate to project root
 cd Retail-Basket-Value-Prediction-System
@@ -220,12 +281,16 @@ cd Retail-Basket-Value-Prediction-System
 # Install dependencies
 npm install
 
+# Configure environment
+cp .env.example .env.development
+# Edit .env.development if needed
+
 # Start development server
 npm run dev
 ```
 ✅ Frontend running at: `http://localhost:3001`
 
-### 5️⃣ Access Application
+### 4️⃣ Access Application
 Open browser and navigate to: `http://localhost:3001`
 
 ---
@@ -321,8 +386,57 @@ Content-Type: application/json
 
 Response:
 {
+  "message": "Login successful",
   "token": "abc123...",
-  "user": { "id": 1, "name": "John Doe", "email": "john@example.com" }
+  "user": {
+    "id": 1,
+    "username": "john_doe",
+    "email": "john@example.com",
+    "full_name": "John Doe",
+    "api_key": "ro_live_..."
+  }
+}
+```
+
+```http
+POST /api/auth/forgot-password/
+Content-Type: application/json
+
+{
+  "email": "john@example.com"
+}
+
+Response:
+{
+  "message": "Password reset email sent successfully"
+}
+```
+
+```http
+POST /api/auth/reset-password/
+Content-Type: application/json
+
+{
+  "token": "reset_token_here",
+  "new_password": "NewSecurePass123"
+}
+
+Response:
+{
+  "message": "Password reset successful"
+}
+```
+
+### Health Check
+```http
+GET /api/health/
+
+Response:
+{
+  "status": "ok",
+  "service": "Retail Basket Value Prediction API",
+  "database": "healthy",
+  "version": "1.0.0"
 }
 ```
 
@@ -373,19 +487,118 @@ Response:
 }
 ```
 
+### Visualization
+```http
+GET /api/visualization/summary/
+Authorization: Token abc123...
+
+Response:
+{
+  "has_data": true,
+  "r2": "0.92",
+  "bias": "2.15",
+  "outlier_score": "4.5"
+}
+```
+
+```http
+GET /api/visualization/scatter/
+Authorization: Token abc123...
+
+Response:
+{
+  "has_data": true,
+  "actual": [100, 150, 200],
+  "predicted": [105, 145, 195]
+}
+```
+
+```http
+GET /api/visualization/error-distribution/
+Authorization: Token abc123...
+
+Response:
+{
+  "has_data": true,
+  "errors": [-5, 5, 10],
+  "mean_error": "3.33",
+  "std_error": "6.24"
+}
+```
+
 ---
 
 ## 🧪 Testing
 
-### Run Backend Tests
+### Backend Tests
 ```bash
 cd backend
 python manage.py test
 ```
 
-### Run Frontend Tests
+### Frontend Tests
 ```bash
 npm test
+```
+
+### Manual Testing Checklist
+- [ ] User registration and login
+- [ ] Forgot password email delivery
+- [ ] Password reset functionality
+- [ ] CSV file upload and validation
+- [ ] Prediction generation with confidence scores
+- [ ] Dashboard metrics display
+- [ ] Visualization charts rendering
+- [ ] Dark/Light mode toggle
+- [ ] API key generation
+- [ ] Prediction history pagination
+- [ ] CSV download functionality
+
+---
+
+## 🚢 Deployment
+
+### Docker Deployment (Production)
+
+The application is deployed on AWS EC2 using Docker containers:
+
+```bash
+# On EC2 instance
+git clone https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System.git
+cd Retail-Basket-Value-Prediction-System
+
+# Configure production environment
+cp backend/.env.example backend/.env
+# Edit backend/.env with production credentials
+
+cp .env.example .env.production
+# Edit .env.production with production API URL
+
+# Start all services
+docker compose up -d
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f
+```
+
+### Environment Variables
+
+**Backend (.env)**:
+```env
+DATABASE_URL=postgresql://user:password@db:5432/retail_basket_db
+SECRET_KEY=your-secret-key
+DEBUG=False
+ALLOWED_HOSTS=51.20.70.80,localhost
+BREVO_API_KEY=your-brevo-api-key
+EMAIL_FROM=your-email@example.com
+```
+
+**Frontend (.env.production)**:
+```env
+VITE_API_URL=http://51.20.70.80:8000
 ```
 
 ---
@@ -428,7 +641,37 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For issues and questions:
 - Open an [Issue](https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System/issues)
-- Email: kalashji21@example.com
+- Email: kalash.p24@medhaviskillsuniversity.edu.in
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**1. CORS Errors**
+- Ensure `ALLOWED_HOSTS` in `backend/.env` includes your domain
+- Check `CORS_ALLOWED_ORIGINS` in `backend/config/settings.py`
+
+**2. Database Connection Failed**
+- Verify PostgreSQL is running: `docker compose ps`
+- Check database credentials in `backend/.env`
+- Ensure `DATABASE_URL` format is correct
+
+**3. Frontend Can't Connect to Backend**
+- Verify `VITE_API_URL` in `.env.development` or `.env.production`
+- Check backend is running: `curl http://localhost:8000/api/health/`
+- Ensure ports 3001 and 8000 are not blocked
+
+**4. Email Not Sending (Forgot Password)**
+- Verify `BREVO_API_KEY` in `backend/.env`
+- Check Brevo account is active
+- Ensure `EMAIL_FROM` is verified in Brevo
+
+**5. Docker Build Fails**
+- Clear Docker cache: `docker system prune -a`
+- Rebuild without cache: `docker compose build --no-cache`
+- Check Docker disk space: `docker system df`
 
 ---
 
