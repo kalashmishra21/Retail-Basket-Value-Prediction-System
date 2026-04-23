@@ -13,8 +13,12 @@
 
 import axios from 'axios'
 
-// Always use relative path /api/ - Nginx will proxy to backend
-const API_BASE_URL = '/api'
+// Use environment variable for API base URL
+// In production: http://51.20.70.80:8000/api
+// In development: http://localhost:8000/api
+const API_BASE_URL = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : 'http://localhost:8000/api'
 
 /**
  * Create Axios instance with default configuration

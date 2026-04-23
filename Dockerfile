@@ -9,14 +9,14 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
+# Copy source code (includes .env.production)
 COPY . .
 
-# Build argument for API URL
-ARG VITE_API_URL=http://localhost:8000
+# Build argument for API URL (can be overridden at build time)
+ARG VITE_API_URL=http://51.20.70.80:8000
 ENV VITE_API_URL=$VITE_API_URL
 
-# Build the app
+# Build the app - Vite will use VITE_API_URL from environment
 RUN npm run build
 
 # Production stage with Nginx
