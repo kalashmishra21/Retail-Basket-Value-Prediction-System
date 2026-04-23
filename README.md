@@ -13,9 +13,18 @@ A production-ready, full-stack machine learning web application that predicts re
 
 **Frontend**: [http://51.20.70.80:3001](http://51.20.70.80:3001)  
 **Backend API**: [http://51.20.70.80:8000](http://51.20.70.80:8000)  
+**Admin Panel**: [http://51.20.70.80:8000/admin/](http://51.20.70.80:8000/admin/)  
 **Health Check**: [http://51.20.70.80:8000/api/health/](http://51.20.70.80:8000/api/health/)
 
 > Deployed on AWS EC2 using Docker containers with PostgreSQL database
+
+### Admin Access
+To create a superuser for admin panel access:
+```bash
+# On EC2 instance
+docker compose exec backend python manage.py createsuperuser
+```
+Then login at: [http://51.20.70.80:8000/admin/](http://51.20.70.80:8000/admin/)
 
 ---
 
@@ -265,13 +274,14 @@ cp .env.example .env
 # Run database migrations
 python manage.py migrate
 
-# Create superuser (optional)
+# Create superuser for admin panel
 python manage.py createsuperuser
 
 # Start Django server
 python manage.py runserver
 ```
-✅ Backend running at: `http://localhost:8000`
+✅ Backend running at: `http://localhost:8000`  
+✅ Admin panel at: `http://localhost:8000/admin/`
 
 ### 3️⃣ Frontend Setup
 ```bash
