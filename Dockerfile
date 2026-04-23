@@ -13,7 +13,7 @@ RUN npm ci
 COPY . .
 
 # Build argument for API URL (can be overridden at build time)
-ARG VITE_API_URL=http://localhost:8000
+ARG VITE_API_URL=http://51.20.70.80:8000
 ENV VITE_API_URL=$VITE_API_URL
 
 # Build the app - Vite will use VITE_API_URL from environment
