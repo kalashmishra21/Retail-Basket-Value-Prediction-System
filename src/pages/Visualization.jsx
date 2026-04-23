@@ -94,19 +94,30 @@ const Visualization = () => {
   /**
    * Calculates histogram bins from error data
    * Auto bin calculation - no hardcoded values
+   * Includes comprehensive NaN prevention
    */
   const calculateHistogram = (errors) => {
     if (!errors || errors.length === 0) return []
     
-    const min = Math.min(...errors)
-    const max = Math.max(...errors)
-    const binCount = Math.min(10, Math.ceil(Math.sqrt(errors.length)))
+    const validErrors = errors.filter(e => typeof e === 'number' && !isNaN(e) && isFinite(e))
+    if (validErrors.length === 0) return []
+    
+    const min = Math.min(...validErrors)
+    const max = Math.max(...validErrors)
+    
+    if (!isFinite(min) || !isFinite(max) || min === max) return []
+    
+    const binCount = Math.min(10, Math.ceil(Math.sqrt(validErrors.length)))
     const binWidth = (max - min) / binCount
     
+    if (!isFinite(binWidth) || binWidth <= 0) return []
+    
     const bins = Array(binCount).fill(0)
-    errors.forEach(error => {
+    validErrors.forEach(error => {
       const binIndex = Math.min(Math.floor((error - min) / binWidth), binCount - 1)
-      bins[binIndex]++
+      if (binIndex >= 0 && binIndex < binCount) {
+        bins[binIndex]++
+      }
     })
     
     return bins.map((count, idx) => ({
@@ -318,30 +329,44 @@ const Visualization = () => {
                           <line x1="0" y1="250" x2="400" y2="250" stroke={isDarkMode?'#374151':'#E5E7EB'} strokeWidth="2" />
                           
                           {/* Histogram bars from real error data */}
-                          {calculateHistogram(errorData.errors).map((bin, idx, arr) => {
-                            const maxCount = Math.max(...arr.map(b => b.count))
-                            const barWidth = 380 / arr.length
-                            const barHeight = (bin.count / maxCount) * 230
-                            const x = 10 + idx * barWidth
-                            return (
-                              <rect 
-                                key={idx}
-                                x={x}
-                                y={250 - barHeight}
-                                width={barWidth - 5}
-                                height={barHeight}
-                                fill="#3B82F6"
-                                opacity="0.8"
-                                title={`Error: ${bin.start.toFixed(1)} to ${bin.end.toFixed(1)}, Count: ${bin.count}`}
-                              />
-                            )
-                          })}
+                          {(() => {
+                            const histogram = calculateHistogram(errorData.errors)
+                            if (histogram.length === 0) return null
+                            
+                            const maxCount = Math.max(...histogram.map(b => b.count), 1)
+                            const barWidth = 380 / histogram.length
+                            
+                            return histogram.map((bin, idx) => {
+                              const barHeight = (bin.count / maxCount) * 230
+                              const x = 10 + idx * barWidth
+                              const y = 250 - barHeight
+                              const width = Math.max(barWidth - 5, 1)
+                              
+                              // Final safety check
+                              if (!isFinite(x) || !isFinite(y) || !isFinite(width) || !isFinite(barHeight)) {
+                                return null
+                              }
+                              
+                              return (
+                                <rect 
+                                  key={idx}
+                                  x={x}
+                                  y={y}
+                                  width={width}
+                                  height={barHeight}
+                                  fill="#3B82F6"
+                                  opacity="0.8"
+                                  title={`Error: ${bin.start.toFixed(1)} to ${bin.end.toFixed(1)}, Count: ${bin.count}`}
+                                />
+                              )
+                            })
+                          })()}
                           
                           <text x="10" y="270" fontSize="9" fill={isDarkMode?'#9CA3AF':'#6B7280'}>
-                            {Math.min(...errorData.errors).toFixed(0)}
+                            {errorData.errors.length > 0 ? Math.min(...errorData.errors).toFixed(0) : '0'}
                           </text>
                           <text x="360" y="270" fontSize="9" fill={isDarkMode?'#9CA3AF':'#6B7280'}>
-                            {Math.max(...errorData.errors).toFixed(0)}
+                            {errorData.errors.length > 0 ? Math.max(...errorData.errors).toFixed(0) : '0'}
                           </text>
                         </svg>
                       </div>
