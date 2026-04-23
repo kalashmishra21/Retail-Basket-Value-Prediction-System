@@ -7,25 +7,16 @@ A production-ready, full-stack machine learning web application that predicts re
 [![React](https://img.shields.io/badge/React-18.2-61DAFB.svg)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
-[![Live Demo](https://img.shields.io/badge/Live-Demo-success.svg)](http://51.20.70.80:3001)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-success.svg)](#)
 
 ## 🌐 Live Deployment
-
-**Frontend**: [http://51.20.70.80:3001](http://51.20.70.80:3001)  
-**Backend API**: [http://51.20.70.80:8000](http://51.20.70.80:8000)  
-**Admin Panel**: [http://51.20.70.80:8000/admin/](http://51.20.70.80:8000/admin/)  
-**Health Check**: [http://51.20.70.80:8000/api/health/](http://51.20.70.80:8000/api/health/)
 
 > Deployed on AWS EC2 using Docker containers with PostgreSQL database
 
 ### Admin Access
-**Username**: `Kalash`  
-**Email**: `kalashji21@gmail.com`  
-**Admin Panel**: [http://51.20.70.80:8000/admin/](http://51.20.70.80:8000/admin/)
-
-To create additional admin users on EC2:
+To create admin users:
 ```bash
-# On EC2 instance
+# On your deployment server
 docker compose exec backend python manage.py createsuperuser
 ```
 
@@ -602,16 +593,16 @@ docker compose logs -f
 **Backend (.env)**:
 ```env
 DATABASE_URL=postgresql://user:password@db:5432/retail_basket_db
-SECRET_KEY=your-secret-key
+SECRET_KEY=your-secret-key-here
 DEBUG=False
-ALLOWED_HOSTS=51.20.70.80,localhost
+ALLOWED_HOSTS=your-domain.com,your-ip-address
 BREVO_API_KEY=your-brevo-api-key
-EMAIL_FROM=your-email@example.com
+EMAIL_FROM=your-verified-email@example.com
 ```
 
 **Frontend (.env.production)**:
 ```env
-VITE_API_URL=http://51.20.70.80:8000
+VITE_API_URL=http://your-backend-url:8000
 ```
 
 ---
@@ -637,7 +628,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👨‍💻 Author
 
 **Kalash Mishra**
-- Email: kalashji21@gmail.com
 - GitHub: [@kalashmishra21](https://github.com/kalashmishra21)
 - LinkedIn: [Kalash Mishra](https://www.linkedin.com/in/kalashmishra21/)
 
@@ -655,7 +645,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For issues and questions:
 - Open an [Issue](https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System/issues)
-- Email: kalashji21@gmail.com
 
 ---
 

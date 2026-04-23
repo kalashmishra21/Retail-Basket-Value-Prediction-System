@@ -3,11 +3,13 @@ node_modules/
 dist/
 build/
 .cache/
+*.log
 
 # ── Environment variables (NEVER commit secrets) ──────────────────────────────
 .env
 .env.local
 .env.production
+.env.development
 backend/.env
 backend/.env.local
 backend/.env.docker
@@ -16,6 +18,7 @@ backend/.env.docker
 __pycache__/
 *.py[cod]
 *.so
+*.pyc
 venv/
 env/
 ENV/
@@ -32,3 +35,13 @@ backend/staticfiles/
 .idea/
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+
+# ── Jupyter Notebooks ─────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── Project specific ──────────────────────────────────────────────────────────
+*.pdf
+Data/

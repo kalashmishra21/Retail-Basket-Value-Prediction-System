@@ -27,15 +27,15 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise for static files
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'django.middleware.csrf.CsrfViewMiddleware',  # Temporarily disabled for debugging
+    'django.middleware.csrf.CsrfViewMiddleware',  # Re-enabled for security
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'api.middleware.APIMonitoringMiddleware',  # Track API requests for monitoring
+    'api.middleware.APIMonitoringMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -122,8 +122,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'api.User'
 
-# CORS Settings - Allow all origins for production deployment
-CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (for testing/deployment)
+# CORS Settings - Restrict to specific origins for security
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3001').split(',')
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -154,12 +154,7 @@ SESSION_COOKIE_AGE = 1209600  # 2 weeks
 CSRF_COOKIE_SAMESITE = None  # Allow cross-origin CSRF
 CSRF_COOKIE_SECURE = False  # Set to True only when using HTTPS
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = [
-    'http://51.20.70.80:3001',
-    'http://51.20.70.80:8000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-]
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3001,http://127.0.0.1:3001').split(',')
 
 # Additional CSRF settings for production without HTTPS
 CSRF_COOKIE_DOMAIN = None
