@@ -7,19 +7,15 @@ A production-ready, full-stack machine learning web application that predicts re
 [![React](https://img.shields.io/badge/React-18.2-61DAFB.svg)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
-[![Live Demo](https://img.shields.io/badge/Live-Demo-success.svg)](http://51.20.70.80:3001)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-success.svg)](https://retail-basket-value-prediction-syst.vercel.app)
 
 ## 🌐 Live Deployment
 
-**Frontend**: [http://51.20.70.80:3001](http://51.20.70.80:3001)  
-**Backend API**: [http://51.20.70.80:8000](http://51.20.70.80:8000)
-**Health Check**: [http://51.20.70.80:8000/api/health/](http://51.20.70.80:8000/api/health/)
+**Frontend**: [https://retail-basket-value-prediction-syst.vercel.app](https://retail-basket-value-prediction-syst.vercel.app)  
+**Backend API**: [https://51.20.70.80](https://51.20.70.80)  
+**Health Check**: [https://51.20.70.80/api/health/](https://51.20.70.80/api/health/)
 
-> Deployed on AWS EC2 using Docker containers with PostgreSQL database
-
-### Admin Access
-**Username**: `Kalash`  
-**Email**: `kalashji21@gmail.com`  
+> Frontend deployed on Vercel, Backend on AWS EC2 with Docker + PostgreSQL  
 
 ---
 
