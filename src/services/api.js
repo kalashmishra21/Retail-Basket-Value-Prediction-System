@@ -109,7 +109,18 @@ export const userAPI = {
 // Dataset APIs
 export const datasetAPI = {
   getAll: () => api.get('/datasets/'),
-  create: (data) => api.post('/datasets/', data),
+  create: (data) => {
+    // If data contains a File object, use FormData for file upload
+    if (data instanceof FormData) {
+      return api.post('/datasets/', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+    }
+    // Otherwise use regular JSON
+    return api.post('/datasets/', data)
+  },
   getById: (id) => api.get(`/datasets/${id}/`),
   delete: (id) => api.delete(`/datasets/${id}/`),
 }
@@ -129,7 +140,18 @@ export const predictionAPI = {
    * Optional date param (YYYY-MM-DD) filters by calendar day on the backend.
    */
   getAll: (date = null) => api.get('/predictions/', { params: date ? { date } : {} }),
-  create: (data) => api.post('/predictions/', data),
+  create: (data) => {
+    // If data contains a File object, use FormData for file upload
+    if (data instanceof FormData) {
+      return api.post('/predictions/', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+    }
+    // Otherwise use regular JSON
+    return api.post('/predictions/', data)
+  },
   getById: (id) => api.get(`/predictions/${id}/`),
   delete: (id) => api.delete(`/predictions/${id}/`),
   /**

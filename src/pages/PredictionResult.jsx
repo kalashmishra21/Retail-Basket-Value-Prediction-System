@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { predictionAPI } from '../services/api'
+import { Sidebar } from '../components'
 
 const PredictionResult = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { isDarkMode } = useTheme()
   const [currentUser, setCurrentUser] = useState(null)
-  const [activeMenu, setActiveMenu] = useState('Predictions')
   const [prediction, setPrediction] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -57,17 +57,6 @@ const PredictionResult = () => {
     localStorage.removeItem('authToken')
     navigate('/')
   }
-
-  const menuItems = [
-    { icon: '📊', label: 'Dashboard', path: '/dashboard' },
-    { icon: '📤', label: 'Upload Data', path: '/upload' },
-    { icon: '📋', label: 'Predictions', path: '/predictions' },
-    { icon: '🕐', label: 'History', path: '/history' },
-    { icon: '🔍', label: 'Explainability', path: '/explainability' },
-    { icon: '📈', label: 'Metrics', path: '/metrics' },
-    { icon: '📊', label: 'Visualization', path: '/visualization' },
-    { icon: '⚙️', label: 'Settings', path: '/settings' }
-  ]
 
   if (!currentUser) return null
   
@@ -131,48 +120,7 @@ const PredictionResult = () => {
 
   return (
     <div className={`flex h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Sidebar */}
-      <div className={`w-64 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col`}>
-        <div className={`p-6 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
-            <span className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>RBVPS</span>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => {
-                setActiveMenu(item.label)
-                navigate(item.path)
-              }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
-                activeMenu === item.label 
-                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
-                  : isDarkMode 
-                    ? 'text-gray-300 hover:bg-gray-700' 
-                    : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span className="text-lg">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className={`p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <button onClick={handleLogout} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}>
-            <span className="text-lg">🚪</span>
-            <span>Logout</span>
-          </button>
-        </div>
-      </div>
+      <Sidebar currentUser={currentUser} activeMenu="Predictions" onLogout={handleLogout} />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -236,6 +184,40 @@ const PredictionResult = () => {
               </div>
             </div>
           )}
+
+          {/* Outlier Detection Alert */}
+          {prediction.is_outlier && (
+            <div className={`${isDarkMode ? 'bg-red-900/30 border-red-800' : 'bg-red-50 border-red-200'} rounded-xl border p-6 mb-6`}>
+              <div className="flex items-start space-x-3">
+                <svg className="w-6 h-6 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h3 className={`font-bold ${isDarkMode ? 'text-red-400' : 'text-red-900'} mb-2`}>🚨 OUTLIER DETECTED</h3>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-red-800'} mb-3`}>
+                    The ML model has flagged this prediction as an outlier with {prediction.outlier_score ? `${parseFloat(prediction.outlier_score).toFixed(0)}%` : 'high'} confidence. 
+                    This indicates the input data pattern is significantly different from the training data.
+                  </p>
+                  <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-red-700'}`}>
+                    <p className="font-semibold mb-2">What this means:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>The prediction interval is unusually wide (high uncertainty)</li>
+                      <li>Input features show unusual patterns not seen during training</li>
+                      <li>The predicted value may be less reliable than typical predictions</li>
+                      <li>This could indicate data quality issues or a genuinely unusual case</li>
+                    </ul>
+                    <p className="mt-3 font-semibold">Recommendations:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>Review the input data for errors or anomalies</li>
+                      <li>Verify that all feature values are within expected ranges</li>
+                      <li>Consider collecting more similar data to improve model coverage</li>
+                      <li>Use this prediction with caution in decision-making</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Main Result Card */}
           <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl border p-8 mb-8`}>
@@ -285,6 +267,25 @@ const PredictionResult = () => {
                 <div>
                   <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} mb-1`}>MARGIN OF ERROR</p>
                   <p className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>+/- ${marginOfError}</p>
+                </div>
+                <div>
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} mb-1`}>OUTLIER DETECTION</p>
+                  {prediction.is_outlier ? (
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded">
+                        ⚠️ Outlier Detected
+                      </span>
+                      {prediction.outlier_score && (
+                        <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          ({parseFloat(prediction.outlier_score).toFixed(0)}%)
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">
+                      ✓ No Outlier
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

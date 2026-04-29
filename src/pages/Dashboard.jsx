@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { predictionAPI, metricsAPI } from '../services/api'
 import { useTheme } from '../context/ThemeContext'
+import { Sidebar, StatsCard, TrendChart } from '../components'
 
 /**
  * Dashboard — main overview page.
@@ -18,7 +19,6 @@ const Dashboard = () => {
   const { isDarkMode, toggleTheme } = useTheme()
 
   const [currentUser, setCurrentUser]       = useState(null)
-  const [activeMenu, setActiveMenu]         = useState('Dashboard')
   const [showProfileMenu, setShowProfileMenu] = useState(false)
 
   // Data states
@@ -103,43 +103,7 @@ const Dashboard = () => {
   const formatDate = (iso) =>
     new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
 
-  // ── Chart helpers ────────────────────────────────────────────────────────────
-  /**
-   * buildChartPoints — converts trend data arrays into SVG polyline points.
-   * Maps values onto a 480×240 canvas (x: 80–530, y: 20–260).
-   * Days with null values are skipped so gaps appear in the line.
-   */
-  const buildChartPoints = (values, maxVal) => {
-    if (!values || maxVal === 0) return ''
-    return values
-      .map((v, i) => {
-        if (v === null) return null
-        const x = 80 + i * 82
-        const y = Math.max(28, 260 - ((v / maxVal) * 232))
-        return `${x},${y}`
-      })
-      .filter(Boolean)
-      .join(' ')
-  }
-
-  const chartMax = trends?.has_data
-    ? Math.ceil(Math.max(...[...(trends.actual || []), ...(trends.predicted || [])].filter(Boolean)) * 1.15)
-    : 6000
-
-  const yLabels = [chartMax, Math.round(chartMax * 0.75), Math.round(chartMax * 0.5), Math.round(chartMax * 0.25), 0]
-
   const recentPredictions = allPredictions.slice(0, 5)
-
-  const menuItems = [
-    { icon: '📊', label: 'Dashboard',     path: '/dashboard' },
-    { icon: '📤', label: 'Upload Data',   path: '/upload' },
-    { icon: '📋', label: 'Predictions',   path: '/predictions' },
-    { icon: '🕐', label: 'History',       path: '/history' },
-    { icon: '🔍', label: 'Explainability',path: '/explainability' },
-    { icon: '📈', label: 'Metrics',       path: '/metrics' },
-    { icon: '📊', label: 'Visualization', path: '/visualization' },
-    { icon: '⚙️', label: 'Settings',      path: '/settings' },
-  ]
 
   if (!currentUser) return null
 
@@ -147,36 +111,7 @@ const Dashboard = () => {
     <div className={`flex h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
 
       {/* ── Sidebar ── */}
-      <div className={`w-64 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col`}>
-        <div className={`p-6 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
-            <span className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>RBVPS</span>
-          </div>
-        </div>
-        <nav className="flex-1 p-4 space-y-1">
-          {menuItems.map((item) => (
-            <button key={item.label}
-              onClick={() => { setActiveMenu(item.label); navigate(item.path) }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
-                activeMenu === item.label
-                  ? 'bg-blue-50 text-blue-600'
-                  : isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'
-              }`}>
-              <span className="text-lg">{item.icon}</span><span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-        <div className={`p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <button onClick={handleLogout} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}>
-            <span className="text-lg">🚪</span><span>Logout</span>
-          </button>
-        </div>
-      </div>
+      <Sidebar currentUser={currentUser} activeMenu="Dashboard" onLogout={handleLogout} />
 
       {/* ── Main ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -237,135 +172,33 @@ const Dashboard = () => {
 
           {/* ── Stats Cards ── */}
           <div className="grid grid-cols-3 gap-6 mb-8">
-
-            {/* Total Predictions — real count from DB */}
-            <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl p-6 border`}>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-1`}>TOTAL PREDICTIONS</p>
-              <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {isLoading ? '—' : allPredictions.length}
-              </h2>
-              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} mt-1`}>
-                {allPredictions.length > 0 ? `${allPredictions.filter(p => p.status === 'completed').length} completed` : 'No predictions yet'}
-              </p>
-            </div>
-
-            {/* RMSE — stable, from DB */}
-            <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl p-6 border`}>
-              <div className="flex items-center space-x-2 mb-1">
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>RMSE</p>
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {isLoading ? '—' : metrics?.rmse ?? '—'}
-              </h2>
-              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} mt-1`}>
-                Root Mean Square Error
-              </p>
-            </div>
-
-            {/* MAE — stable, from DB */}
-            <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl p-6 border`}>
-              <div className="flex items-center space-x-2 mb-1">
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>MAE</p>
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {isLoading ? '—' : metrics?.mae ?? '—'}
-              </h2>
-              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} mt-1`}>Mean absolute error</p>
-            </div>
+            <StatsCard
+              title="TOTAL PREDICTIONS"
+              value={isLoading ? '—' : allPredictions.length}
+              subtitle={allPredictions.length > 0 ? `${allPredictions.filter(p => p.status === 'completed').length} completed` : 'No predictions yet'}
+            />
+            <StatsCard
+              title="RMSE"
+              value={isLoading ? '—' : metrics?.rmse ?? '—'}
+              subtitle="Root Mean Square Error"
+              showInfoIcon
+            />
+            <StatsCard
+              title="MAE"
+              value={isLoading ? '—' : metrics?.mae ?? '—'}
+              subtitle="Mean absolute error"
+              showInfoIcon
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-6">
 
             {/* ── Basket Value Trends Chart — real data from /api/metrics/trends/ ── */}
-            <div className={`col-span-2 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl p-6 border`}>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Basket Value Trends</h3>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Actual vs. predicted average basket value — last 7 days
-                  </p>
-                </div>
-                <button
-                  onClick={() => { fetchDashboardData(); fetchTrends() }}
-                  disabled={trendsLoading}
-                  className={`px-4 py-2 border ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-lg text-sm font-medium transition disabled:opacity-50`}>
-                  {trendsLoading ? '⟳ Syncing…' : '⟳ Sync Data'}
-                </button>
-              </div>
-
-              <div className={`h-80 ${isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 to-purple-50'} rounded-lg relative`}>
-                {trendsLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  </div>
-                )}
-
-                {!trendsLoading && !trends?.has_data && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8">
-                    <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    <p className="text-sm text-gray-500">No prediction data yet. Upload a dataset to see trends.</p>
-                  </div>
-                )}
-
-                {!trendsLoading && trends?.has_data && (
-                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 300">
-                    {/* Y-axis labels */}
-                    {yLabels.map((val, i) => (
-                      <text key={i} x="42" y={24 + i * 52} fontSize="9" fill={isDarkMode ? '#9CA3AF' : '#6B7280'} textAnchor="end">
-                        ${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}
-                      </text>
-                    ))}
-                    {/* Grid lines */}
-                    {[0,1,2,3,4].map(i => (
-                      <line key={i} x1="48" y1={24 + i*52} x2="575" y2={24 + i*52} stroke={isDarkMode ? '#374151' : '#E5E7EB'} strokeWidth="1" strokeDasharray="4" />
-                    ))}
-                    {/* X-axis labels — always shown from API labels */}
-                    {(trends.labels || []).map((label, i) => (
-                      <text key={i} x={80 + i * 82} y="285" fontSize="9" fill={isDarkMode ? '#9CA3AF' : '#6B7280'} textAnchor="middle">{label}</text>
-                    ))}
-                    {/* Actual line */}
-                    {buildChartPoints(trends.actual, chartMax) && (
-                      <polyline points={buildChartPoints(trends.actual, chartMax)} fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinejoin="round" />
-                    )}
-                    {/* Predicted line */}
-                    {buildChartPoints(trends.predicted, chartMax) && (
-                      <polyline points={buildChartPoints(trends.predicted, chartMax)} fill="none" stroke="#93C5FD" strokeWidth="2" strokeDasharray="6,4" strokeLinejoin="round" />
-                    )}
-                    {/* Dots on actual */}
-                    {(trends.actual || []).map((v, i) => v !== null && (
-                      <circle key={i} cx={80 + i * 82} cy={Math.max(28, 260 - ((v / chartMax) * 232))} r="4" fill="#3B82F6" />
-                    ))}
-                    {/* Dots on predicted */}
-                    {(trends.predicted || []).map((v, i) => v !== null && (
-                      <circle key={i} cx={80 + i * 82} cy={Math.max(28, 260 - ((v / chartMax) * 232))} r="3" fill="#93C5FD" />
-                    ))}
-                  </svg>
-                )}
-
-                {/* Legend */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center space-x-6 bg-white/90 px-4 py-2 rounded-lg shadow-sm">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-blue-600 rounded-full" />
-                    <span className="text-xs text-gray-600">Actual Value</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-blue-300 rounded-full" />
-                    <span className="text-xs text-gray-600">Predicted Value</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <TrendChart
+              trends={trends}
+              trendsLoading={trendsLoading}
+              onSync={() => { fetchDashboardData(); fetchTrends() }}
+            />
 
             {/* ── Right column ── */}
             <div className="space-y-6">

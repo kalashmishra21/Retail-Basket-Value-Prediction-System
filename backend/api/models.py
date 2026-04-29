@@ -100,6 +100,7 @@ class Prediction(models.Model):
     - prediction_id: Auto-generated sequential ID (PRED-XXXX)
     - store_location: Deterministic, set once at creation (never random)
     - predicted_value: Basket value prediction in dollars
+    - actual_value: Ground truth from CSV data (for metrics calculation)
     - confidence: Model confidence score (0-100%)
     """
     STATUS_CHOICES = [
@@ -112,10 +113,14 @@ class Prediction(models.Model):
     dataset = models.ForeignKey(Dataset, on_delete=models.SET_NULL, null=True, blank=True)
     prediction_id = models.CharField(max_length=50, unique=True, db_index=True)
     predicted_value = models.DecimalField(max_digits=10, decimal_places=2)
+    actual_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     confidence = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')
     # Stored once at creation — never recalculated, ensures stability
     store_location = models.CharField(max_length=100, default='Store #1')
+    # Outlier detection fields (from ML model)
+    is_outlier = models.BooleanField(default=False, help_text='Whether prediction is flagged as outlier by ML model')
+    outlier_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text='Outlier confidence score (0-100%)')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def save(self, *args, **kwargs):

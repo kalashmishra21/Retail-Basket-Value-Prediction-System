@@ -1,0 +1,16 @@
+[
+  "total_items",
+  "unique_items",
+  "avg_item_price",
+  "max_item_price",
+  "total_quantity",
+  "hour_of_day",
+  "day_of_week",
+  "is_weekend",
+  "month",
+  "category_diversity",
+  "has_high_value_item",
+  "customer_frequency",
+  "customer_avg_spend",
+  "is_repeat_customer"
+]

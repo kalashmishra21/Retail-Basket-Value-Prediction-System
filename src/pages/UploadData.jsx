@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { datasetAPI, predictionAPI } from '../services/api'
 import { useTheme } from '../context/ThemeContext'
+import { Sidebar } from '../components'
 
 /**
  * UploadData component for dataset upload and prediction processing
@@ -11,7 +12,6 @@ const UploadData = () => {
   const navigate = useNavigate()
   const { isDarkMode } = useTheme()
   const [currentUser, setCurrentUser] = useState(null)
-  const [activeMenu, setActiveMenu] = useState('Upload Data')
   const [uploadedFile, setUploadedFile] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -185,8 +185,8 @@ const UploadData = () => {
   }
 
   /**
-   * handleRunPrediction — saves dataset to DB, runs 4-step processing animation,
-   * then creates prediction record. Steps are faster (total ~7s) to reduce latency.
+   * handleRunPrediction — uploads actual CSV file to backend and lets ML model process it.
+   * NO frontend calculations - all predictions come from real XGBoost model.
    * Tracks actual wall-clock time and shows it after completion.
    */
   const handleRunPrediction = async () => {
@@ -196,14 +196,21 @@ const UploadData = () => {
     const startTime = performance.now()
 
     try {
-      const datasetResponse = await datasetAPI.create({
-        filename: uploadedFile.name,
-        file_path: `/uploads/${uploadedFile.name}`,
-        file_size: uploadedFile.file.size,
-        rows_count: dataStats.totalRows,
-        columns_count: dataStats.featureCount,
-        status: 'uploaded'
-      })
+      // Get current user ID from localStorage
+      const user = JSON.parse(localStorage.getItem('currentUser'))
+      
+      // Create FormData to upload actual CSV file
+      const formData = new FormData()
+      formData.append('file', uploadedFile.file)  // Actual File object
+      formData.append('user', user.id)
+      formData.append('filename', uploadedFile.name)
+      formData.append('file_size', uploadedFile.file.size)
+      formData.append('rows_count', dataStats.totalRows)
+      formData.append('columns_count', dataStats.featureCount)
+      formData.append('status', 'uploaded')
+
+      // Upload dataset with actual file
+      const datasetResponse = await datasetAPI.create(formData)
 
       // Faster steps — total ~7s instead of ~44s
       const steps = [
@@ -235,64 +242,17 @@ const UploadData = () => {
               const elapsed = Math.round((performance.now() - startTime) / 1000)
               setActualElapsed(elapsed)
               try {
-                // Calculate confidence based on data quality metrics
-                // Access quality data from state (nullRatio, duplicates)
-                let baseConfidence = 95
-                
-                const nullRatio = quality.nullRatio || 0
-                if (nullRatio > 40) {
-                  baseConfidence -= 25
-                } else if (nullRatio > 30) {
-                  baseConfidence -= 20
-                } else if (nullRatio > 20) {
-                  baseConfidence -= 15
-                } else if (nullRatio > 10) {
-                  baseConfidence -= 10
-                } else if (nullRatio > 5) {
-                  baseConfidence -= 5
-                }
-                
-                const duplicates = quality.duplicates || 0
-                const duplicateRatio = dataStats.totalRows > 0 ? (duplicates / dataStats.totalRows) * 100 : 0
-                if (duplicateRatio > 30) {
-                  baseConfidence -= 15
-                } else if (duplicateRatio > 20) {
-                  baseConfidence -= 10
-                } else if (duplicateRatio > 10) {
-                  baseConfidence -= 5
-                } else if (duplicateRatio > 5) {
-                  baseConfidence -= 3
-                }
-                
-                if (dataStats.totalRows < 30) {
-                  baseConfidence -= 20
-                } else if (dataStats.totalRows < 50) {
-                  baseConfidence -= 15
-                } else if (dataStats.totalRows < 100) {
-                  baseConfidence -= 10
-                } else if (dataStats.totalRows < 200) {
-                  baseConfidence -= 5
-                }
-                
-                if (dataStats.featureCount < 4) {
-                  baseConfidence -= 15
-                } else if (dataStats.featureCount < 5) {
-                  baseConfidence -= 10
-                } else if (dataStats.featureCount < 7) {
-                  baseConfidence -= 5
-                }
-                
-                const calculatedConfidence = Math.max(50, Math.min(99, baseConfidence))
-                const baseValue = (dataStats.totalRows * 0.03 + dataStats.featureCount * 12).toFixed(2)
-                
+                // Create prediction - backend ML model will process the CSV
+                // NO predicted_value or confidence sent from frontend
+                // Backend will use real XGBoost model to generate these
                 const predictionResponse = await predictionAPI.create({
+                  user: user.id,
                   dataset: datasetResponse.data.id,
-                  predicted_value: baseValue,
-                  confidence: calculatedConfidence.toFixed(2),
                   status: 'completed'
                 })
                 setTimeout(() => navigate('/prediction-result', { state: { predictionId: predictionResponse.data.id } }), 800)
               } catch (error) {
+                console.error('Prediction creation error:', error)
                 alert('Prediction completed but failed to save. Please try again.')
                 setShowProcessing(false)
               }
@@ -303,7 +263,20 @@ const UploadData = () => {
 
       processStep()
     } catch (error) {
-      alert('Failed to process prediction. Please try again.')
+      console.error('Prediction processing error:', error)
+      
+      // Check if it's a validation error
+      if (error.response?.status === 400 && error.response?.data) {
+        const errorData = error.response.data
+        if (errorData.message) {
+          alert(`Dataset Validation Failed:\n\n${errorData.message}\n\nPlease upload a valid retail dataset with required columns.`)
+        } else {
+          alert('Dataset validation failed. Please check your file format.')
+        }
+      } else {
+        alert('Failed to process prediction. Please try again.')
+      }
+      
       setShowProcessing(false)
     }
   }
@@ -318,65 +291,11 @@ const UploadData = () => {
     navigate('/')
   }
 
-  const menuItems = [
-    { icon: '📊', label: 'Dashboard', path: '/dashboard' },
-    { icon: '📤', label: 'Upload Data', path: '/upload' },
-    { icon: '📋', label: 'Predictions', path: '/predictions' },
-    { icon: '🕐', label: 'History', path: '/history' },
-    { icon: '🔍', label: 'Explainability', path: '/explainability' },
-    { icon: '📈', label: 'Metrics', path: '/metrics' },
-    { icon: '📊', label: 'Visualization', path: '/visualization' },
-    { icon: '⚙️', label: 'Settings', path: '/settings' }
-  ]
-
   if (!currentUser) return null
 
   return (
     <div className={`flex h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Sidebar */}
-      <div className={`w-64 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col`}>
-        <div className={`p-6 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
-            <span className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>RBVPS</span>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => {
-                setActiveMenu(item.label)
-                navigate(item.path)
-              }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
-                activeMenu === item.label 
-                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
-                  : isDarkMode 
-                    ? 'text-gray-300 hover:bg-gray-700' 
-                    : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span className="text-lg">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className={`p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <button onClick={handleLogout} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
-            isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'
-          }`}>
-            <span className="text-lg">🚪</span>
-            <span>Logout</span>
-          </button>
-        </div>
-      </div>
+      <Sidebar currentUser={currentUser} activeMenu="Upload Data" onLogout={handleLogout} />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">

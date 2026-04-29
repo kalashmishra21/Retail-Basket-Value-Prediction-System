@@ -146,8 +146,11 @@ class PredictionSerializer(serializers.ModelSerializer):
     Serializer for Prediction model.
     Includes dataset_rows_count and store_location as stable read-only fields.
     store_location is stored in DB — never recalculated, never random.
+    predicted_value and confidence are optional - will be calculated by ML model if not provided.
     """
     dataset_rows_count = serializers.SerializerMethodField()
+    predicted_value = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+    confidence = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, allow_null=True)
 
     class Meta:
         model = Prediction

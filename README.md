@@ -1,619 +1,277 @@
-# 🛒 Retail Basket Value Prediction System (RBVPS)
+# 🛒 Retail Basket Value Prediction System
 
-A production-ready, full-stack machine learning web application that predicts retail basket values using **XGBoost Regressor**. Built with React, Django, and PostgreSQL.
+A production-ready machine learning web application that predicts retail basket values using **XGBoost**. Built with React, Django REST Framework, and PostgreSQL.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/Django-4.2-green.svg)](https://www.djangoproject.com/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB.svg)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)](https://www.postgresql.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
-[![Live Demo](https://img.shields.io/badge/Live-Demo-success.svg)](https://retail-basket-value-prediction-syst.vercel.app)
-
-## 🌐 Live Deployment
-
-**Frontend**: [https://retail-basket-value-prediction-syst.vercel.app](https://retail-basket-value-prediction-syst.vercel.app)  
-**Backend API**: [https://51.20.70.80](https://51.20.70.80)  
-**Health Check**: [https://51.20.70.80/api/health/](https://51.20.70.80/api/health/)
-
-> Frontend deployed on Vercel, Backend on AWS EC2 with Docker + PostgreSQL  
-
----
-
-## 📋 Table of Contents
-
-- [🎯 Overview](#-overview)
-- [✨ Features](#-features)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [📂 Project Structure](#-project-structure)
-- [🚀 Setup Instructions](#-setup-instructions)
-- [🔄 How It Works](#-how-it-works)
-- [📊 Dataset Format](#-dataset-format)
-- [📡 API Documentation](#-api-documentation)
-- [📸 Screenshots](#-screenshots)
-- [🧪 Testing](#-testing)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
 
 ---
 
 ## 🎯 Overview
 
-**RBVPS** helps retail businesses predict the total basket value of customer transactions using machine learning. Upload transaction data, get instant predictions, and analyze model performance through interactive dashboards.
+**RBVPS** helps retail businesses predict customer basket values using machine learning. Upload transaction data, get instant predictions with 90%+ accuracy, and analyze model performance through interactive dashboards.
 
-### Real-World Use Case
-A retail chain wants to predict how much a customer will spend based on:
-- Time of purchase (morning/evening)
-- Customer loyalty score
-- Active promotions
-- Previous purchase history
-- Store location
-
-This system provides those predictions with **95%+ confidence** and explains which factors influenced each prediction.
+### Key Capabilities
+- Real-time basket value predictions with confidence scores
+- Feature importance analysis for explainability
+- Performance metrics tracking (RMSE, MAE, R²)
+- Interactive data visualization
+- Historical prediction management
 
 ---
 
 ## ✨ Features
 
 ### 🤖 Machine Learning
-- **XGBoost Regressor** for accurate basket value predictions
-- Real-time inference with confidence scores
-- Feature importance analysis (SHAP-style explanations)
+- **XGBoost Regressor** with 90%+ R² score
+- Confidence intervals and outlier detection
+- Feature importance analysis
 
-### 📊 Analytics & Visualization
-- **Dashboard**: Real-time RMSE, MAE, R² metrics
-- **7-Day Trend Chart**: Actual vs Predicted values
-- **Scatter Plots**: Model accuracy visualization
-- **Error Distribution**: Histogram analysis
-- **Category Analysis**: Performance by store/region
+### 📊 Analytics Dashboard
+- Real-time RMSE, MAE, R² metrics
+- 7-day trend visualization
+- Scatter plots and error distribution
+- Category-wise performance analysis
 
-### 🔐 Security & Authentication
-- JWT-style token authentication
-- Secure password hashing
-- Auto-logout on session expiry
-- API key generation for programmatic access
+### 🔐 Security
+- Token-based authentication
+- Password reset via email
+- Secure session management
+- User data isolation
 
 ### 📁 Data Management
-- Drag-and-drop CSV upload
-- Schema validation & duplicate detection
+- CSV file upload with validation
 - Paginated prediction history
-- Per-record CSV download
-- Bulk delete operations
+- Individual record download
+- Bulk operations support
 
-### 🎨 User Experience
-- Dark/Light mode toggle
-- Responsive design (mobile-friendly)
+### 🎨 User Interface
+- Dark/Light mode
+- Responsive design
 - Real-time updates
-- Interactive charts
 - Clean, modern UI
-- Forgot password with email reset
-- Password strength validation
-- Session management
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Frontend
-| Technology | Purpose |
-|------------|---------|
-| **React 18** | UI framework for building interactive interfaces |
-| **Vite** | Fast build tool and dev server |
-| **Tailwind CSS** | Utility-first CSS framework |
-| **React Router v6** | Client-side routing |
-| **Axios** | HTTP client for API calls |
-
-### Backend
-| Technology | Purpose |
-|------------|---------|
-| **Django 4.2** | Python web framework |
-| **Django REST Framework** | RESTful API development |
-| **PostgreSQL 15** | Production database |
-| **NumPy** | Numerical computations (RMSE, MAE, R²) |
-| **Gunicorn** | WSGI HTTP server |
-| **Brevo (Sendinblue)** | Email service for password reset |
-| **dj-database-url** | Database URL parsing |
-
-### Machine Learning
-| Technology | Purpose |
-|------------|---------|
-| **XGBoost** | Gradient boosting algorithm for regression |
-| **Feature Engineering** | Data preprocessing pipeline |
-
-### DevOps
-| Technology | Purpose |
-|------------|---------|
-| **Docker** | Containerization |
-| **Docker Compose** | Multi-container orchestration |
-| **WhiteNoise** | Static file serving |
-| **AWS EC2** | Cloud hosting |
-| **Nginx** | Reverse proxy and static file serving |
+**Frontend:** React 18, Vite, Tailwind CSS, Axios  
+**Backend:** Django 4.2, Django REST Framework, PostgreSQL  
+**ML:** XGBoost, NumPy, Pandas, Scikit-learn  
+**DevOps:** Docker, Docker Compose, Nginx, Gunicorn
 
 ---
 
 ## 📂 Project Structure
 
 ```
-Retail-Basket-Value-Prediction-System/
-│
-├── backend/                      # Django backend
-│   ├── api/
-│   │   ├── models.py            # Database models (User, Prediction, PredictionFeatures, APIRequestLog)
-│   │   ├── views.py             # API endpoints (auth, predictions, metrics, visualization)
-│   │   ├── serializers.py       # Data validation
-│   │   ├── urls.py              # URL routing
-│   │   ├── middleware.py        # Request logging & monitoring
-│   │   ├── authentication.py    # Custom token authentication
-│   │   └── management/
-│   │       └── commands/
-│   │           └── reset_data.py # Database reset utility
-│   ├── config/
-│   │   └── settings.py          # Django configuration
-│   ├── requirements.txt         # Python dependencies
-│   └── .env.example             # Environment variables template
-│
-├── src/                         # React frontend
-│   ├── pages/
-│   │   ├── Dashboard.jsx        # Main overview
-│   │   ├── UploadData.jsx       # File upload
-│   │   ├── Predictions.jsx      # Prediction feed
-│   │   ├── History.jsx          # Historical records
-│   │   ├── Explainability.jsx   # Feature importance
-│   │   ├── Metrics.jsx          # Performance metrics
-│   │   ├── Visualization.jsx    # Charts & graphs
-│   │   ├── Settings.jsx         # User settings
-│   │   ├── Login.jsx            # Login with forgot password
-│   │   ├── Signup.jsx           # User registration
-│   │   ├── ResetPassword.jsx    # Password reset page
-│   │   └── PredictionResult.jsx # Individual prediction details
-│   ├── services/
-│   │   └── api.js               # API client
-│   ├── context/
-│   │   └── ThemeContext.jsx     # Dark mode state
-│   └── App.jsx                  # Main app component
-│
-├── Data/
-│   └── Online Retail.csv        # Sample dataset
-│
-├── docker-compose.yml           # Docker orchestration (PostgreSQL + Django + React)
-├── Dockerfile                   # Frontend container (Nginx + React build)
-├── backend/Dockerfile           # Backend container (Gunicorn + Django)
-├── nginx.conf                   # Nginx configuration
-├── .env.development             # Development environment variables
-├── .env.production              # Production environment variables
-├── package.json                 # Node dependencies
-├── tailwind.config.js           # Tailwind configuration
-├── vite.config.js               # Vite configuration
-└── README.md                    # This file
+├── backend/                 # Django REST API
+│   ├── api/                # Models, views, serializers
+│   ├── ml/                 # ML models and training
+│   └── config/             # Django settings
+├── src/                    # React frontend
+│   ├── pages/              # Page components
+│   ├── components/         # Reusable components
+│   └── services/           # API client
+├── Data/                   # Training dataset
+├── docker-compose.yml      # Docker orchestration
+└── README.md              # Documentation
 ```
 
 ---
 
-## 🚀 Setup Instructions
+## 🚀 Quick Start
 
-### Option 1: Quick Start with Docker (Recommended)
+### Prerequisites
+- Docker & Docker Compose
+- Git
 
-#### Prerequisites
-- **Docker** and **Docker Compose** installed
-- **Git**
+### Installation
 
-#### Steps
 ```bash
 # Clone repository
 git clone https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System.git
 cd Retail-Basket-Value-Prediction-System
 
-# Configure environment variables
+# Configure environment
 cp backend/.env.example backend/.env
-# Edit backend/.env with your settings
+# Edit backend/.env with your database credentials
 
-# Start all services (PostgreSQL + Django + React)
+# Start services
 docker compose up -d
 
 # Check status
 docker compose ps
-
-# View logs
-docker compose logs -f
 ```
 
-✅ **Application running at:**
+**Access Application:**
 - Frontend: `http://localhost:3001`
-- Backend: `http://localhost:8000`
-- Database: `localhost:5432`
+- Backend API: `http://localhost:8000`
+- Health Check: `http://localhost:8000/api/health/`
 
-#### Stop Services
+### Stop Services
 ```bash
 docker compose down
 ```
 
 ---
 
-### Option 2: Local Development Setup
+## 💻 Local Development
 
-#### Prerequisites
-- **Python 3.10+**
-- **Node.js 18+**
-- **PostgreSQL 15+**
-- **Git**
-
-### 1️⃣ Clone Repository
-```bash
-git clone https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System.git
-cd Retail-Basket-Value-Prediction-System
-```
-
-### 2️⃣ Backend Setup
+### Backend Setup
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your PostgreSQL credentials
-
-# Run database migrations
 python manage.py migrate
-
-# Create superuser for admin panel
-python manage.py createsuperuser
-
-# Start Django server
 python manage.py runserver
 ```
-✅ Backend running at: `http://localhost:8000`
 
-### 3️⃣ Frontend Setup
+### Frontend Setup
 ```bash
-# Open new terminal, navigate to project root
-cd Retail-Basket-Value-Prediction-System
-
-# Install dependencies
 npm install
-
-# Configure environment
-cp .env.example .env.development
-# Edit .env.development if needed
-
-# Start development server
 npm run dev
 ```
-✅ Frontend running at: `http://localhost:3001`
 
-### 4️⃣ Access Application
-Open browser and navigate to: `http://localhost:3001`
-
----
-
-
-
-## 🔄 How It Works
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  1. User Authentication                                      │
-│     → Signup/Login with email & password                    │
-│     → JWT token generated and stored                        │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  2. Data Upload                                              │
-│     → User uploads CSV file (drag & drop)                   │
-│     → Frontend validates: size, format, schema              │
-│     → File parsed: row count, columns, null ratio           │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  3. Backend Processing                                       │
-│     → Dataset saved to PostgreSQL                           │
-│     → Data cleaning & feature engineering                   │
-│     → XGBoost model inference                               │
-│     → Prediction + confidence score calculated              │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  4. Results Storage                                          │
-│     → Prediction saved with unique ID (PRED-XXXX)           │
-│     → Feature importance computed & stored                  │
-│     → Metrics updated (RMSE, MAE, R²)                       │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  5. Visualization                                            │
-│     → Dashboard shows real-time metrics                     │
-│     → Charts display trends & accuracy                      │
-│     → Explainability page shows feature importance          │
-│     → History page allows download/delete                   │
-└─────────────────────────────────────────────────────────────┘
+### Train ML Model
+```bash
+cd backend
+python ml/train_model.py
 ```
 
 ---
 
 ## 📊 Dataset Format
 
-Your CSV must contain these columns:
+Required CSV columns:
 
-| Column | Type | Description | Example |
-|--------|------|-------------|---------|
-| `transaction_id` | String | Unique transaction ID | "TXN-001" |
-| `item_id` | String | Product identifier | "PROD-123" |
-| `item_list` | String | Comma-separated items | "Apple,Banana,Milk" |
-| `promotion_level` | Float | Discount applied (0-1) | 0.15 |
-| `customer_loyalty` | Float | Loyalty score (0-1) | 0.85 |
-| `time_of_day` | Integer | Hour (0-23) | 14 |
-| `day_of_week` | Integer | Day (0=Mon, 6=Sun) | 3 |
-| `store_location` | String | Store identifier | "Store-NYC-01" |
-| `previous_spend` | Float | Past purchase amount | 250.50 |
-| `inventory_depth` | Float | Stock availability (0-1) | 0.90 |
+| Column | Type | Description |
+|--------|------|-------------|
+| InvoiceNo | String | Transaction ID |
+| Quantity | Integer | Item quantity |
+| UnitPrice | Float | Item price |
+| InvoiceDate | DateTime | Transaction timestamp |
+| CustomerID | String | Customer identifier |
 
-**Supported Formats**: `.csv`, `.json`, `.xlsx`  
-**Max File Size**: 50 MB
+**Supported formats:** CSV, XLSX  
+**Max file size:** 50 MB
 
 ---
 
-## 📡 API Documentation
+## 📡 API Endpoints
 
 ### Authentication
 ```http
 POST /api/auth/register/
-Content-Type: application/json
-
-{
-  "username": "john_doe",
-  "email": "john@example.com",
-  "password": "SecurePass123"
-}
-```
-
-```http
 POST /api/auth/login/
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "password": "SecurePass123"
-}
-
-Response:
-{
-  "message": "Login successful",
-  "token": "abc123...",
-  "user": {
-    "id": 1,
-    "username": "john_doe",
-    "email": "john@example.com",
-    "full_name": "John Doe",
-    "api_key": "ro_live_..."
-  }
-}
-```
-
-```http
+POST /api/auth/logout/
 POST /api/auth/forgot-password/
-Content-Type: application/json
-
-{
-  "email": "john@example.com"
-}
-
-Response:
-{
-  "message": "Password reset email sent successfully"
-}
-```
-
-```http
 POST /api/auth/reset-password/
-Content-Type: application/json
-
-{
-  "token": "reset_token_here",
-  "new_password": "NewSecurePass123"
-}
-
-Response:
-{
-  "message": "Password reset successful"
-}
-```
-
-### Health Check
-```http
-GET /api/health/
-
-Response:
-{
-  "status": "ok",
-  "service": "Retail Basket Value Prediction API",
-  "database": "healthy",
-  "version": "1.0.0"
-}
 ```
 
 ### Predictions
 ```http
-GET /api/predictions/
-Authorization: Token abc123...
-
-Response:
-[
-  {
-    "id": 1,
-    "prediction_id": "PRED-6900",
-    "predicted_value": "125.50",
-    "confidence": "95.20",
-    "status": "completed",
-    "created_at": "2024-01-15T10:30:00Z"
-  }
-]
-```
-
-```http
-POST /api/predictions/
-Authorization: Token abc123...
-Content-Type: application/json
-
-{
-  "dataset_id": 5,
-  "features": {
-    "promotion_level": 0.15,
-    "customer_loyalty": 0.85,
-    ...
-  }
-}
+GET    /api/predictions/
+POST   /api/predictions/
+GET    /api/predictions/{id}/
+DELETE /api/predictions/{id}/
+GET    /api/predictions/{id}/download/
 ```
 
 ### Metrics
 ```http
 GET /api/metrics/latest/
-Authorization: Token abc123...
-
-Response:
-{
-  "rmse": 12.45,
-  "mae": 8.32,
-  "r2": 0.92,
-  "total_predictions": 150
-}
+GET /api/metrics/trends/
+GET /api/metrics/summary/
+GET /api/metrics/timeseries/
 ```
 
 ### Visualization
 ```http
 GET /api/visualization/summary/
-Authorization: Token abc123...
-
-Response:
-{
-  "has_data": true,
-  "r2": "0.92",
-  "bias": "2.15",
-  "outlier_score": "4.5"
-}
-```
-
-```http
 GET /api/visualization/scatter/
-Authorization: Token abc123...
-
-Response:
-{
-  "has_data": true,
-  "actual": [100, 150, 200],
-  "predicted": [105, 145, 195]
-}
-```
-
-```http
 GET /api/visualization/error-distribution/
-Authorization: Token abc123...
-
-Response:
-{
-  "has_data": true,
-  "errors": [-5, 5, 10],
-  "mean_error": "3.33",
-  "std_error": "6.24"
-}
+GET /api/visualization/category-analysis/
 ```
+
+### Explainability
+```http
+GET /api/explainability/{prediction_id}/
+```
+
+---
+
+## 🔄 How It Works
+
+1. **Upload Data** → User uploads CSV file
+2. **Validation** → System validates schema and data quality
+3. **Feature Engineering** → Extract features from transactions
+4. **ML Inference** → XGBoost model predicts basket value
+5. **Results** → Display prediction with confidence score
+6. **Analytics** → Track performance metrics over time
 
 ---
 
 ## 🧪 Testing
 
-### Backend Tests
 ```bash
+# Backend tests
 cd backend
 python manage.py test
-```
 
-### Frontend Tests
-```bash
+# Frontend tests
 npm test
 ```
 
+---
+
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
-
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create feature branch (`git checkout -b feature/NewFeature`)
+3. Commit changes (`git commit -m 'Add NewFeature'`)
+4. Push to branch (`git push origin feature/NewFeature`)
+5. Open Pull Request
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
 ## 👨‍💻 Author
 
-**Kalash Mishra**
-- Email: kalashji21@gmail.com
-- GitHub: [@kalashmishra21](https://github.com/kalashmishra21)
-- LinkedIn: [Kalash Mishra](https://www.linkedin.com/in/kalashmishra21/)
-
----
-
-## 🙏 Acknowledgments
-
-- XGBoost team for the amazing ML library
-- Django & React communities
-- All contributors and testers
-
----
-
-## 📞 Support
-
-For issues and questions:
-- Open an [Issue](https://github.com/kalashmishra21/Retail-Basket-Value-Prediction-System/issues)
-- Email: kalashji21@gmail.com
+**Kalash Mishra**  
+📧 kalashji21@gmail.com  
+🔗 [GitHub](https://github.com/kalashmishra21) | [LinkedIn](https://www.linkedin.com/in/kalashmishra21/)
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Common Issues
-
-**1. CORS Errors**
-- Ensure `ALLOWED_HOSTS` in `backend/.env` includes your domain
-- Check `CORS_ALLOWED_ORIGINS` in `backend/config/settings.py`
-
-**2. Database Connection Failed**
+**Database Connection Issues:**
 - Verify PostgreSQL is running: `docker compose ps`
-- Check database credentials in `backend/.env`
-- Ensure `DATABASE_URL` format is correct
+- Check credentials in `backend/.env`
 
-**3. Frontend Can't Connect to Backend**
-- Verify `VITE_API_URL` in `.env.development` or `.env.production`
-- Check backend is running: `curl http://localhost:8000/api/health/`
-- Ensure ports 3001 and 8000 are not blocked
+**CORS Errors:**
+- Update `ALLOWED_HOSTS` in backend settings
+- Verify `VITE_API_URL` in frontend `.env`
 
-**4. Email Not Sending (Forgot Password)**
-- Verify `BREVO_API_KEY` in `backend/.env`
-- Check Brevo account is active
-- Ensure `EMAIL_FROM` is verified in Brevo
+**Email Not Sending:**
+- Check `BREVO_API_KEY` in `backend/.env`
+- Verify email service configuration
 
-**5. Docker Build Fails**
-- Clear Docker cache: `docker system prune -a`
-- Rebuild without cache: `docker compose build --no-cache`
-- Check Docker disk space: `docker system df`
+**Docker Build Fails:**
+- Clear cache: `docker system prune -a`
+- Rebuild: `docker compose build --no-cache`
 
 ---
 
 **⭐ Star this repo if you find it helpful!**
 
-© 2024 Retail Basket Value Prediction System. All Rights Reserved.
+© 2024 Retail Basket Value Prediction System

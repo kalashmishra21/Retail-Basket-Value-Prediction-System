@@ -209,8 +209,9 @@ def notification_settings(request):
 # Stores file metadata: name, size, row count, column count
 class DatasetViewSet(viewsets.ModelViewSet):
     """
-    CRUD operations for dataset management with user isolation
-    Each user can only access their own datasets
+    CRUD operations for dataset management with user isolation.
+    Handles actual CSV file uploads and stores them to disk.
+    Each user can only access their own datasets.
     """
     serializer_class = DatasetSerializer
     permission_classes = [IsAuthenticated]
@@ -222,12 +223,114 @@ class DatasetViewSet(viewsets.ModelViewSet):
         """
         return Dataset.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
         """
-        Attach current user to dataset on creation
-        Ensures proper data ownership
+        Handle file upload and save dataset metadata.
+        Validates CSV structure before saving.
         """
-        serializer.save(user=self.request.user)
+        import os
+        from django.conf import settings
+        import uuid
+        import pandas as pd
+        
+        # Get uploaded file from request
+        uploaded_file = request.FILES.get('file')
+        
+        if not uploaded_file:
+            return Response(
+                {'error': 'No file uploaded'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate file extension
+        if not uploaded_file.name.endswith(('.csv', '.CSV')):
+            return Response(
+                {'error': 'Invalid file format. Only CSV files are supported.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create uploads directory if it doesn't exist
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Generate unique filename to avoid conflicts
+        file_extension = os.path.splitext(uploaded_file.name)[1]
+        unique_filename = f"{uuid.uuid4().hex}{file_extension}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # Save file to disk
+        try:
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+        except Exception as e:
+            logger.error(f"Failed to save file: {str(e)}")
+            return Response(
+                {'error': f'Failed to save file: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Validate CSV structure
+        try:
+            df = pd.read_csv(file_path, encoding='latin1', on_bad_lines='skip', nrows=10)
+            
+            # Check for required columns
+            required_cols = ['InvoiceNo', 'Quantity', 'UnitPrice', 'InvoiceDate']
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            
+            if missing_cols:
+                # Delete the uploaded file
+                os.remove(file_path)
+                return Response(
+                    {
+                        'error': 'Dataset validation failed',
+                        'message': f'Missing required columns: {", ".join(missing_cols)}',
+                        'required_columns': required_cols,
+                        'found_columns': list(df.columns)
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check if there's any valid data
+            df_clean = df.dropna(subset=['InvoiceNo'])
+            df_clean = df_clean[(df_clean['Quantity'] > 0) & (df_clean['UnitPrice'] > 0)]
+            
+            if len(df_clean) == 0:
+                os.remove(file_path)
+                return Response(
+                    {
+                        'error': 'Dataset validation failed',
+                        'message': 'No valid data rows found. Please check your data quality.'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            # Delete the uploaded file
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            logger.error(f"CSV validation failed: {str(e)}")
+            return Response(
+                {
+                    'error': 'Dataset validation failed',
+                    'message': 'Unable to parse CSV file. Please check file format and encoding.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create dataset record
+        dataset = Dataset.objects.create(
+            user=request.user,
+            filename=request.data.get('filename', uploaded_file.name),
+            file_path=file_path,
+            file_size=int(request.data.get('file_size', uploaded_file.size)),
+            rows_count=int(request.data.get('rows_count', 0)) if request.data.get('rows_count') else None,
+            columns_count=int(request.data.get('columns_count', 0)) if request.data.get('columns_count') else None,
+            status=request.data.get('status', 'uploaded')
+        )
+        
+        serializer = self.get_serializer(dataset)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 # Prediction ViewSet - CRUD Operations for ML Predictions
 # Handles prediction creation, listing, retrieval, deletion, and download
@@ -262,44 +365,124 @@ class PredictionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Save prediction with a deterministic store_location derived from
-        the prediction_id hash — same prediction always gets the same store.
-        Also auto-generates feature data for explainability.
-        No Math.random() anywhere.
+        Create prediction using ML model - NO frontend calculations accepted.
+        
+        Always uses ML model to generate prediction from dataset CSV file.
+        Extracts real features, makes real predictions, calculates real metrics.
+        
+        If prediction fails, saves record with status='failed' for accurate success rate tracking.
         """
-        prediction = serializer.save(user=self.request.user)
-
-        # Deterministic store number: hash of prediction_id mod 50, 1-indexed
-        store_num = (hash(prediction.prediction_id) % 50) + 1
-        prediction.store_location = f"Store #{store_num}"
-        prediction.save(update_fields=['store_location'])
-
-        dataset        = prediction.dataset
-        predicted_val  = float(prediction.predicted_value)
-        confidence_val = float(prediction.confidence) if prediction.confidence else 85.0
-
-        if dataset:
-            rows      = dataset.rows_count    or 1000
-            cols      = dataset.columns_count or 10
-            file_size = dataset.file_size     or 1000000
-        else:
-            rows, cols, file_size = 1000, 10, 1000000
-
-        def norm(val, lo, hi):
-            ratio = max(0.0, min(1.0, (val - lo) / (hi - lo + 1e-9)))
-            return round(0.1 + ratio * 0.85, 4)
-
-        feature_data = {
-            "Promotion Level":  norm(confidence_val, 70, 100),
-            "Customer Loyalty": norm(rows, 1000, 200000),
-            "Previous Spend":   norm(predicted_val, 500, 8000),
-            "Time of Day":      norm(cols, 5, 50),
-            "Day of Week":      norm(file_size, 50000, 50000000),
-            "Store Location":   norm(50 - cols, 0, 45),
-            "Inventory Depth":  norm(rows / max(cols, 1), 10, 5000),
-        }
-
-        PredictionFeatures.objects.create(prediction=prediction, feature_data=feature_data)
+        from ml.model_loader import ml_model
+        from ml.feature_extractor import extract_features_from_dataset
+        import pandas as pd
+        
+        dataset = serializer.validated_data.get('dataset')
+        
+        if not dataset:
+            raise ValueError("Dataset is required for prediction")
+        
+        if not ml_model:
+            raise ValueError("ML model not loaded. Please contact administrator.")
+        
+        # Create prediction record first with 'processing' status
+        # Set default values for required fields
+        prediction = serializer.save(
+            user=self.request.user,
+            status='processing',
+            predicted_value=0.0,  # Default value
+            confidence=0.0  # Default value
+        )
+        
+        try:
+            # Extract features from CSV
+            logger.info(f"Extracting features from dataset: {dataset.file_path}")
+            features = extract_features_from_dataset(dataset)
+            logger.info(f"Features extracted: {features}")
+            
+            # Make prediction using ML model
+            logger.info("Making prediction with XGBoost model...")
+            prediction_result = ml_model.predict(features)
+            logger.info(f"Prediction result: {prediction_result}")
+            
+            # Calculate actual value from CSV (ground truth)
+            # Use median basket value from dataset for more stable actual_value
+            logger.info(f"Reading CSV to calculate actual value: {dataset.file_path}")
+            df = pd.read_csv(dataset.file_path, encoding='latin1', on_bad_lines='skip')
+            df = df.dropna(subset=['InvoiceNo'])
+            df = df[df['Quantity'] > 0]
+            df = df[df['UnitPrice'] > 0]
+            df['basket_value'] = df['Quantity'] * df['UnitPrice']
+            
+            # Calculate basket value per invoice
+            invoice_totals = df.groupby('InvoiceNo')['basket_value'].sum()
+            
+            # Use median basket value (more robust to outliers)
+            actual_basket_value = invoice_totals.median()
+            logger.info(f"Actual basket value (median): {actual_basket_value}")
+            logger.info(f"Basket value range: £{invoice_totals.min():.2f} - £{invoice_totals.max():.2f}")
+            
+            # Update prediction with ML model results
+            prediction.predicted_value = max(0.0, prediction_result['predicted_value'])  # Ensure non-negative
+            prediction.actual_value = round(actual_basket_value, 2)
+            prediction.confidence = prediction_result['confidence']
+            prediction.is_outlier = prediction_result.get('is_outlier', False)
+            prediction.outlier_score = prediction_result.get('outlier_score', 0.0)
+            prediction.status = 'completed'
+            
+            # Deterministic store location
+            store_num = (hash(prediction.prediction_id) % 50) + 1
+            prediction.store_location = f"Store #{store_num}"
+            
+            prediction.save()
+            logger.info(f"Prediction completed: {prediction.prediction_id}")
+            
+            # Store feature data for explainability (normalized values)
+            def normalize_feature(value, min_val, max_val):
+                """Normalize feature to 0-1 range for explainability"""
+                if max_val == min_val:
+                    return 0.5
+                return max(0.0, min(1.0, (value - min_val) / (max_val - min_val)))
+            
+            feature_data = {
+                "Total Items": normalize_feature(features['total_items'], 1, 100),
+                "Unique Items": normalize_feature(features['unique_items'], 1, 100),
+                "Avg Item Price": normalize_feature(features['avg_item_price'], 0, 50),
+                "Max Item Price": normalize_feature(features['max_item_price'], 0, 100),
+                "Total Quantity": normalize_feature(features['total_quantity'], 1, 500),
+                "Hour of Day": normalize_feature(features['hour_of_day'], 0, 23),
+                "Day of Week": normalize_feature(features['day_of_week'], 0, 6),
+                "Is Weekend": float(features['is_weekend']),
+                "Month": normalize_feature(features['month'], 1, 12),
+                "Category Diversity": normalize_feature(features['category_diversity'], 1, 26),
+                "Has High Value Item": float(features['has_high_value_item']),
+                "Customer Frequency": normalize_feature(features['customer_frequency'], 1, 100),
+                "Customer Avg Spend": normalize_feature(features['customer_avg_spend'], 0, 1000),
+                "Is Repeat Customer": float(features['is_repeat_customer']),
+            }
+            
+            PredictionFeatures.objects.create(
+                prediction=prediction,
+                feature_data=feature_data
+            )
+            
+            logger.info(f"Feature data saved for prediction: {prediction.prediction_id}")
+            
+        except Exception as e:
+            # Save prediction with 'failed' status for accurate success rate tracking
+            logger.error(f"ML prediction failed: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            
+            # Update prediction status to failed
+            prediction.status = 'failed'
+            prediction.predicted_value = 0.0  # Default value
+            prediction.confidence = 0.0
+            prediction.save()
+            
+            logger.info(f"Prediction marked as failed: {prediction.prediction_id}")
+            
+            # Re-raise error to return proper error response to frontend
+            raise ValueError(f"Failed to generate prediction: {str(e)}")
 
     @action(detail=True, methods=['get'], url_path='download')
     def download(self, request, pk=None):
@@ -339,44 +522,44 @@ class PredictionViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def get_trends(request):
     """
-    Returns last-7-days basket value trend grouped by calendar day.
-
-    For each of the last 7 days (UTC):
-      - Fetch completed predictions for that day
-      - Compute avg predicted_value
-      - Compute actual as predicted * 0.93 (deterministic proxy, no random)
-    Days with no predictions return None so the chart can skip them.
-    Labels are real weekday names derived from actual dates.
+    Returns last-7-days basket value trend using real actual values from database.
+    
+    For each of the last 7 days:
+      - Fetch completed predictions with actual values
+      - Compute avg predicted_value and avg actual_value
+    Days with no predictions return None.
     """
     from datetime import datetime, timedelta, timezone
     from django.db.models import Avg
 
     today = datetime.now(timezone.utc).date()
-    days  = [today - timedelta(days=i) for i in range(6, -1, -1)]
+    days = [today - timedelta(days=i) for i in range(6, -1, -1)]
 
-    labels    = [d.strftime('%a') for d in days]
-    actual    = []
+    labels = [d.strftime('%a') for d in days]
+    actual = []
     predicted = []
 
     for day in days:
         day_preds = Prediction.objects.filter(
             user=request.user,
             status='completed',
-            created_at__date=day
+            created_at__date=day,
+            actual_value__isnull=False
         )
         if day_preds.exists():
             avg_pred = float(day_preds.aggregate(Avg('predicted_value'))['predicted_value__avg'])
+            avg_actual = float(day_preds.aggregate(Avg('actual_value'))['actual_value__avg'])
             predicted.append(round(avg_pred, 2))
-            actual.append(round(avg_pred * 0.93, 2))
+            actual.append(round(avg_actual, 2))
         else:
             predicted.append(None)
             actual.append(None)
 
     return Response({
-        'labels':    labels,
-        'actual':    actual,
+        'labels': labels,
+        'actual': actual,
         'predicted': predicted,
-        'has_data':  any(v is not None for v in predicted),
+        'has_data': any(v is not None for v in predicted),
     })
 
 
@@ -384,30 +567,31 @@ def get_trends(request):
 @permission_classes([IsAuthenticated])
 def calculate_metrics(request):
     """
-    Returns stable RMSE, MAE, R² and model health for the current user.
-
-    Actual values = predicted * 0.93 (deterministic — no random seed).
-    Same predictions always produce the same metric values.
-    Also returns model_status, last_trained, drift_detected derived from DB.
+    Returns RMSE, MAE, R² calculated from real ML predictions and actual values.
+    
+    Uses actual_value field from database (ground truth from CSV).
+    All metrics are calculated from real data - NO fake formulas.
     """
     try:
         predictions = Prediction.objects.filter(
             user=request.user,
-            status='completed'
+            status='completed',
+            actual_value__isnull=False  # Only predictions with actual values
         )
 
         if predictions.count() == 0:
             return Response({
                 'rmse': None, 'mae': None, 'r_squared': None,
                 'total_predictions': 0,
-                'message': 'No predictions available yet'
+                'message': 'No predictions with actual values available yet'
             })
 
         predicted_values = np.array([float(p.predicted_value) for p in predictions])
-        actual_values    = predicted_values * 0.93   # deterministic, no random
+        actual_values = np.array([float(p.actual_value) for p in predictions])
 
+        # Calculate real metrics
         rmse = np.sqrt(np.mean((predicted_values - actual_values) ** 2))
-        mae  = np.mean(np.abs(predicted_values - actual_values))
+        mae = np.mean(np.abs(predicted_values - actual_values))
         ss_res = np.sum((actual_values - predicted_values) ** 2)
         ss_tot = np.sum((actual_values - np.mean(actual_values)) ** 2)
         r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
@@ -415,14 +599,14 @@ def calculate_metrics(request):
         latest = predictions.latest('created_at')
 
         return Response({
-            'rmse':              round(float(rmse), 2),
-            'mae':               round(float(mae), 2),
-            'r_squared':         round(float(r_squared), 4),
+            'rmse': round(float(rmse), 2),
+            'mae': round(float(mae), 2),
+            'r_squared': round(float(r_squared), 4),
             'total_predictions': predictions.count(),
-            'last_updated':      latest.created_at,
-            'model_status':      'Optimal' if float(r_squared) > 0.5 else 'Needs Review',
-            'last_trained':      latest.created_at,
-            'drift_detected':    False,
+            'last_updated': latest.created_at,
+            'model_status': 'Optimal' if float(r_squared) > 0.7 else 'Needs Review',
+            'last_trained': latest.created_at,
+            'drift_detected': False,
         })
     except Exception as e:
         return Response({
@@ -434,14 +618,14 @@ def calculate_metrics(request):
 @permission_classes([IsAuthenticated])
 def metrics_summary(request):
     """
-    Returns current RMSE, MAE, R² metrics summary.
-    Calculates real-time metrics from database predictions.
-    NO dummy data - all values computed from actual predictions.
+    Returns current RMSE, MAE, R² metrics summary from real ML predictions.
+    Calculates metrics from actual_value field in database.
     """
     try:
         predictions = Prediction.objects.filter(
             user=request.user,
-            status='completed'
+            status='completed',
+            actual_value__isnull=False
         )
 
         if predictions.count() == 0:
@@ -453,12 +637,12 @@ def metrics_summary(request):
                 'mae_change': None,
                 'total_predictions': 0,
                 'has_data': False,
-                'message': 'No predictions available yet'
+                'message': 'No predictions with actual values available yet'
             })
 
         # Calculate metrics from real predictions
         predicted_values = np.array([float(p.predicted_value) for p in predictions])
-        actual_values = predicted_values * 0.93  # deterministic proxy
+        actual_values = np.array([float(p.actual_value) for p in predictions])
 
         rmse = np.sqrt(np.mean((predicted_values - actual_values) ** 2))
         mae = np.mean(np.abs(predicted_values - actual_values))
@@ -484,12 +668,12 @@ def metrics_summary(request):
 
         if recent_preds.exists() and previous_preds.exists():
             recent_pred_vals = np.array([float(p.predicted_value) for p in recent_preds])
-            recent_actual_vals = recent_pred_vals * 0.93
+            recent_actual_vals = np.array([float(p.actual_value) for p in recent_preds])
             recent_rmse = np.sqrt(np.mean((recent_pred_vals - recent_actual_vals) ** 2))
             recent_mae = np.mean(np.abs(recent_pred_vals - recent_actual_vals))
 
             prev_pred_vals = np.array([float(p.predicted_value) for p in previous_preds])
-            prev_actual_vals = prev_pred_vals * 0.93
+            prev_actual_vals = np.array([float(p.actual_value) for p in previous_preds])
             prev_rmse = np.sqrt(np.mean((prev_pred_vals - prev_actual_vals) ** 2))
             prev_mae = np.mean(np.abs(prev_pred_vals - prev_actual_vals))
 
@@ -519,9 +703,11 @@ def metrics_summary(request):
 @permission_classes([IsAuthenticated])
 def metrics_timeseries(request):
     """
-    Returns RMSE and MAE time series data for charts.
-    Supports query param: ?range=7days|30days|90days
-    Calculates real metrics from database - NO dummy data.
+    Returns RMSE and MAE time series data using real actual values.
+    Supports query param: ?range=today|7days|30days
+    
+    For 'today': Groups by hour (last 24 hours)
+    For '7days' and '30days': Groups by day
     """
     try:
         from datetime import datetime, timedelta, timezone
@@ -530,17 +716,23 @@ def metrics_timeseries(request):
         range_param = request.GET.get('range', '30days')
         
         # Determine number of days
-        if range_param == '7days':
+        if range_param == 'today':
+            num_days = 1
+        elif range_param == '7days':
             num_days = 7
-        elif range_param == '90days':
-            num_days = 90
         else:
             num_days = 30
 
         today = datetime.now(timezone.utc).date()
         days = [today - timedelta(days=i) for i in range(num_days - 1, -1, -1)]
 
-        labels = [d.strftime('%m-%d') for d in days]
+        # Format labels based on range
+        if range_param == 'today':
+            # For today, just show the date (we group all predictions from today)
+            labels = [d.strftime('%m-%d') for d in days]
+        else:
+            labels = [d.strftime('%m-%d') for d in days]
+        
         rmse_values = []
         mae_values = []
 
@@ -548,12 +740,13 @@ def metrics_timeseries(request):
             day_preds = Prediction.objects.filter(
                 user=request.user,
                 status='completed',
-                created_at__date=day
+                created_at__date=day,
+                actual_value__isnull=False
             )
 
             if day_preds.exists():
                 predicted_vals = np.array([float(p.predicted_value) for p in day_preds])
-                actual_vals = predicted_vals * 0.93
+                actual_vals = np.array([float(p.actual_value) for p in day_preds])
 
                 rmse = np.sqrt(np.mean((predicted_vals - actual_vals) ** 2))
                 mae = np.mean(np.abs(predicted_vals - actual_vals))
@@ -583,14 +776,13 @@ def metrics_timeseries(request):
 @permission_classes([IsAuthenticated])
 def metrics_snapshots(request):
     """
-    Returns best and worst performing prediction instances.
-    Finds actual best/worst based on error magnitude.
-    NO fake data - computed from real predictions.
+    Returns best and worst performing prediction instances using real actual values.
     """
     try:
         predictions = Prediction.objects.filter(
             user=request.user,
-            status='completed'
+            status='completed',
+            actual_value__isnull=False
         )
 
         if predictions.count() == 0:
@@ -598,14 +790,14 @@ def metrics_snapshots(request):
                 'best': None,
                 'worst': None,
                 'has_data': False,
-                'message': 'No predictions available yet'
+                'message': 'No predictions with actual values available yet'
             })
 
         # Calculate error for each prediction
         pred_errors = []
         for pred in predictions:
             predicted = float(pred.predicted_value)
-            actual = predicted * 0.93
+            actual = float(pred.actual_value)
             error = abs(predicted - actual)
             pred_errors.append({
                 'prediction': pred,
@@ -731,14 +923,13 @@ def get_explainability(request, prediction_id):
 @permission_classes([IsAuthenticated])
 def visualization_scatter(request):
     """
-    Returns actual vs predicted values for scatter plot.
-    Fetches real predictions from database - NO dummy data.
-    Calculates actual as predicted * 0.93 (deterministic).
+    Returns actual vs predicted values for scatter plot using real data.
     """
     try:
         predictions = Prediction.objects.filter(
             user=request.user,
-            status='completed'
+            status='completed',
+            actual_value__isnull=False
         ).order_by('-created_at')[:100]  # Last 100 predictions
 
         if predictions.count() == 0:
@@ -746,7 +937,7 @@ def visualization_scatter(request):
                 'actual': [],
                 'predicted': [],
                 'has_data': False,
-                'message': 'No predictions available yet'
+                'message': 'No predictions with actual values available yet'
             })
 
         actual_values = []
@@ -754,7 +945,7 @@ def visualization_scatter(request):
 
         for pred in predictions:
             predicted = float(pred.predicted_value)
-            actual = predicted * 0.93  # deterministic proxy
+            actual = float(pred.actual_value)
             
             predicted_values.append(round(predicted, 2))
             actual_values.append(round(actual, 2))
@@ -777,27 +968,27 @@ def visualization_scatter(request):
 @permission_classes([IsAuthenticated])
 def visualization_error_distribution(request):
     """
-    Returns error distribution for histogram.
+    Returns error distribution for histogram using real actual values.
     Error = Actual - Predicted
-    Calculates from real database predictions - NO dummy data.
     """
     try:
         predictions = Prediction.objects.filter(
             user=request.user,
-            status='completed'
+            status='completed',
+            actual_value__isnull=False
         )
 
         if predictions.count() == 0:
             return Response({
                 'errors': [],
                 'has_data': False,
-                'message': 'No predictions available yet'
+                'message': 'No predictions with actual values available yet'
             })
 
         errors = []
         for pred in predictions:
             predicted = float(pred.predicted_value)
-            actual = predicted * 0.93
+            actual = float(pred.actual_value)
             error = actual - predicted
             errors.append(round(error, 2))
 
@@ -820,16 +1011,16 @@ def visualization_error_distribution(request):
 @permission_classes([IsAuthenticated])
 def visualization_category_analysis(request):
     """
-    Returns category-wise RMSE, MAE, and volume analysis.
+    Returns category-wise RMSE, MAE, and volume analysis using real actual values.
     Groups predictions by store_location as category proxy.
-    Calculates real metrics from database - NO dummy data.
     """
     try:
         from django.db.models import Count
         
         predictions = Prediction.objects.filter(
             user=request.user,
-            status='completed'
+            status='completed',
+            actual_value__isnull=False
         )
 
         if predictions.count() == 0:
@@ -839,7 +1030,7 @@ def visualization_category_analysis(request):
                 'mae': [],
                 'volume': [],
                 'has_data': False,
-                'message': 'No predictions available yet'
+                'message': 'No predictions with actual values available yet'
             })
 
         # Group by store_location (category proxy)
@@ -857,7 +1048,7 @@ def visualization_category_analysis(request):
             cat_preds = predictions.filter(store_location=store_loc)
             
             predicted_vals = np.array([float(p.predicted_value) for p in cat_preds])
-            actual_vals = predicted_vals * 0.93
+            actual_vals = np.array([float(p.actual_value) for p in cat_preds])
             
             rmse = np.sqrt(np.mean((predicted_vals - actual_vals) ** 2))
             mae = np.mean(np.abs(predicted_vals - actual_vals))
@@ -886,14 +1077,14 @@ def visualization_category_analysis(request):
 @permission_classes([IsAuthenticated])
 def visualization_summary(request):
     """
-    Returns summary statistics for visualization page.
+    Returns summary statistics for visualization page using real actual values.
     Calculates R², bias, and outlier score from real data.
-    NO dummy values - all computed from database.
     """
     try:
         predictions = Prediction.objects.filter(
             user=request.user,
-            status='completed'
+            status='completed',
+            actual_value__isnull=False
         )
 
         if predictions.count() == 0:
@@ -902,11 +1093,11 @@ def visualization_summary(request):
                 'bias': None,
                 'outlier_score': None,
                 'has_data': False,
-                'message': 'No predictions available yet'
+                'message': 'No predictions with actual values available yet'
             })
 
         predicted_values = np.array([float(p.predicted_value) for p in predictions])
-        actual_values = predicted_values * 0.93
+        actual_values = np.array([float(p.actual_value) for p in predictions])
 
         # Calculate R²
         ss_res = np.sum((actual_values - predicted_values) ** 2)
