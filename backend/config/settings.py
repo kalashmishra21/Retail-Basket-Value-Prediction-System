@@ -117,6 +117,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# File Upload Settings
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom User Model
@@ -155,6 +159,9 @@ CSRF_COOKIE_SAMESITE = None  # Allow cross-origin CSRF
 CSRF_COOKIE_SECURE = False  # Set to True only when using HTTPS
 CSRF_COOKIE_HTTPONLY = False
 CSRF_TRUSTED_ORIGINS = [
+    'https://retail-basket-value-prediction-syst.vercel.app',
+    'https://51.20.70.80',
+    'http://51.20.70.80',
     'http://51.20.70.80:3001',
     'http://51.20.70.80:8000',
     'http://localhost:3000',
