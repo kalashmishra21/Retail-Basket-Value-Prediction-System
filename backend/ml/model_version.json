@@ -1,0 +1,22 @@
+{
+  "model_version": "1.0.0",
+  "training_date": "2026-04-29",
+  "xgboost_version": "2.0.3",
+  "scikit_learn_version": "1.4.0",
+  "numpy_version": "1.26.4",
+  "pandas_version": "2.2.0",
+  "python_version": "3.11",
+  "model_format": "native_json",
+  "models": {
+    "main": "xgboost_main.json",
+    "lower": "xgboost_lower.json",
+    "upper": "xgboost_upper.json",
+    "scaler": "scaler.pkl"
+  },
+  "performance": {
+    "r2": 0.9073,
+    "rmse": 122.27,
+    "mae": 62.54
+  },
+  "notes": "Models saved in native XGBoost JSON format for version-safe loading. Pickle versions kept for backward compatibility."
+}

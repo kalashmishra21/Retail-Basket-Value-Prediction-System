@@ -272,15 +272,25 @@ print("\n[9/9] Saving models and artifacts...")
 
 save_dir = Path(__file__).parent
 
-# Save models
+# Save models in native XGBoost format (version-safe)
+model_main.get_booster().save_model(str(save_dir / 'xgboost_main.json'))
+print("  ✅ Saved: xgboost_main.json (native format)")
+
+model_lower.get_booster().save_model(str(save_dir / 'xgboost_lower.json'))
+print("  ✅ Saved: xgboost_lower.json (native format)")
+
+model_upper.get_booster().save_model(str(save_dir / 'xgboost_upper.json'))
+print("  ✅ Saved: xgboost_upper.json (native format)")
+
+# Also save pickle versions for backward compatibility
 joblib.dump(model_main, save_dir / 'xgboost_main.pkl')
-print("  ✅ Saved: xgboost_main.pkl")
+print("  ✅ Saved: xgboost_main.pkl (backward compatibility)")
 
 joblib.dump(model_lower, save_dir / 'xgboost_lower.pkl')
-print("  ✅ Saved: xgboost_lower.pkl")
+print("  ✅ Saved: xgboost_lower.pkl (backward compatibility)")
 
 joblib.dump(model_upper, save_dir / 'xgboost_upper.pkl')
-print("  ✅ Saved: xgboost_upper.pkl")
+print("  ✅ Saved: xgboost_upper.pkl (backward compatibility)")
 
 # Save scaler
 joblib.dump(scaler, save_dir / 'scaler.pkl')
@@ -314,6 +324,37 @@ metrics = {
 with open(save_dir / 'model_metrics.json', 'w') as f:
     json.dump(metrics, f, indent=2)
 print("  ✅ Saved: model_metrics.json")
+
+# Save version metadata
+import sys
+from datetime import datetime
+
+version_metadata = {
+    'model_version': '1.0.0',
+    'training_date': datetime.now().strftime('%Y-%m-%d'),
+    'xgboost_version': xgb.__version__,
+    'scikit_learn_version': '1.4.0',  # From requirements.txt
+    'numpy_version': np.__version__,
+    'pandas_version': pd.__version__,
+    'python_version': f"{sys.version_info.major}.{sys.version_info.minor}",
+    'model_format': 'native_json',
+    'models': {
+        'main': 'xgboost_main.json',
+        'lower': 'xgboost_lower.json',
+        'upper': 'xgboost_upper.json',
+        'scaler': 'scaler.pkl'
+    },
+    'performance': {
+        'r2': float(test_r2),
+        'rmse': float(test_rmse),
+        'mae': float(test_mae)
+    },
+    'notes': 'Models saved in native XGBoost JSON format for version-safe loading. Pickle versions kept for backward compatibility.'
+}
+
+with open(save_dir / 'model_version.json', 'w') as f:
+    json.dump(version_metadata, f, indent=2)
+print("  ✅ Saved: model_version.json")
 
 print("\n" + "="*80)
 print("✅ MODEL TRAINING COMPLETED SUCCESSFULLY!")

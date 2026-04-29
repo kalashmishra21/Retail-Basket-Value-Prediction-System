@@ -2,12 +2,14 @@
 Model Loader - Singleton Pattern
 
 Loads trained XGBoost models once and keeps them in memory for fast inference.
+Uses native XGBoost format for version-safe loading.
 """
 
-import joblib
 import json
 from pathlib import Path
 import numpy as np
+import xgboost as xgb
+import joblib
 
 
 class ModelLoader:
@@ -29,23 +31,57 @@ class ModelLoader:
             self.load_models()
     
     def load_models(self):
-        """Load all models and artifacts from disk."""
+        """
+        Load all models and artifacts from disk.
+        Uses native XGBoost format (.json) for version-safe loading.
+        Falls back to pickle (.pkl) for backward compatibility.
+        """
         base_path = Path(__file__).parent
         
         try:
             print("🔄 Loading ML models...")
             
-            # Load XGBoost models
-            self.model_main = joblib.load(base_path / 'xgboost_main.pkl')
-            print("  ✅ Main model loaded")
+            # Load XGBoost models using native format (preferred) or pickle (fallback)
+            main_json = base_path / 'xgboost_main.json'
+            main_pkl = base_path / 'xgboost_main.pkl'
             
-            self.model_lower = joblib.load(base_path / 'xgboost_lower.pkl')
-            print("  ✅ Lower bound model loaded")
+            if main_json.exists():
+                self.model_main = xgb.Booster()
+                self.model_main.load_model(str(main_json))
+                print("  ✅ Main model loaded (native format)")
+            elif main_pkl.exists():
+                self.model_main = joblib.load(main_pkl)
+                print("  ✅ Main model loaded (pickle format - consider retraining)")
+            else:
+                raise FileNotFoundError("Main model not found")
             
-            self.model_upper = joblib.load(base_path / 'xgboost_upper.pkl')
-            print("  ✅ Upper bound model loaded")
+            lower_json = base_path / 'xgboost_lower.json'
+            lower_pkl = base_path / 'xgboost_lower.pkl'
             
-            # Load scaler
+            if lower_json.exists():
+                self.model_lower = xgb.Booster()
+                self.model_lower.load_model(str(lower_json))
+                print("  ✅ Lower bound model loaded (native format)")
+            elif lower_pkl.exists():
+                self.model_lower = joblib.load(lower_pkl)
+                print("  ✅ Lower bound model loaded (pickle format - consider retraining)")
+            else:
+                raise FileNotFoundError("Lower bound model not found")
+            
+            upper_json = base_path / 'xgboost_upper.json'
+            upper_pkl = base_path / 'xgboost_upper.pkl'
+            
+            if upper_json.exists():
+                self.model_upper = xgb.Booster()
+                self.model_upper.load_model(str(upper_json))
+                print("  ✅ Upper bound model loaded (native format)")
+            elif upper_pkl.exists():
+                self.model_upper = joblib.load(upper_pkl)
+                print("  ✅ Upper bound model loaded (pickle format - consider retraining)")
+            else:
+                raise FileNotFoundError("Upper bound model not found")
+            
+            # Load scaler (joblib is fine for sklearn objects with version lock)
             self.scaler = joblib.load(base_path / 'scaler.pkl')
             print("  ✅ Feature scaler loaded")
             
@@ -58,6 +94,16 @@ class ModelLoader:
             with open(base_path / 'model_metrics.json', 'r') as f:
                 self.metrics = json.load(f)
             print(f"  ✅ Model metrics loaded (R²={self.metrics['test']['r2']:.4f})")
+            
+            # Load version metadata
+            version_file = base_path / 'model_version.json'
+            if version_file.exists():
+                with open(version_file, 'r') as f:
+                    self.version_info = json.load(f)
+                print(f"  ✅ Model version: {self.version_info.get('model_version', 'unknown')}")
+            else:
+                self.version_info = None
+                print("  ⚠️  No version metadata found")
             
             ModelLoader._models_loaded = True
             print("✅ All ML models loaded successfully!\n")
@@ -105,10 +151,20 @@ class ModelLoader:
         # Scale features
         X_scaled = self.scaler.transform(X)
         
-        # Make predictions
-        pred_main = float(self.model_main.predict(X_scaled)[0])
-        pred_lower = float(self.model_lower.predict(X_scaled)[0])
-        pred_upper = float(self.model_upper.predict(X_scaled)[0])
+        # Make predictions - handle both Booster and XGBRegressor
+        import xgboost as xgb
+        
+        if isinstance(self.model_main, xgb.Booster):
+            # Native Booster format
+            dmatrix = xgb.DMatrix(X_scaled)
+            pred_main = float(self.model_main.predict(dmatrix)[0])
+            pred_lower = float(self.model_lower.predict(dmatrix)[0])
+            pred_upper = float(self.model_upper.predict(dmatrix)[0])
+        else:
+            # XGBRegressor format (pickle)
+            pred_main = float(self.model_main.predict(X_scaled)[0])
+            pred_lower = float(self.model_lower.predict(X_scaled)[0])
+            pred_upper = float(self.model_upper.predict(X_scaled)[0])
         
         # Calculate confidence based on prediction interval width relative to prediction
         # Better formula: confidence increases as interval narrows
@@ -180,6 +236,10 @@ class ModelLoader:
     def get_feature_names(self):
         """Return list of feature names."""
         return self.feature_names
+    
+    def get_version_info(self):
+        """Return model version metadata."""
+        return self.version_info if hasattr(self, 'version_info') else None
 
 
 # Global singleton instance

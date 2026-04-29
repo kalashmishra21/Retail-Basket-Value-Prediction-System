@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and debugging tools
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     gcc \
@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y \
     musl-dev \
     libpq-dev \
     curl \
+    procps \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
