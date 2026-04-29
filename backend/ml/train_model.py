@@ -30,7 +30,7 @@ print("="*80)
 # ============================================================================
 print("\n[1/9] Loading dataset...")
 
-data_path = Path(__file__).parent.parent.parent / 'Data' / 'Online Retail.csv'
+data_path = Path(__file__).parent.parent / 'Data' / 'Online Retail.csv'
 print(f"Reading from: {data_path}")
 
 try:
