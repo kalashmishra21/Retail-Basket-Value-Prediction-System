@@ -361,9 +361,71 @@ print("✅ MODEL TRAINING COMPLETED SUCCESSFULLY!")
 print("="*80)
 print(f"\nModel files saved in: {save_dir}")
 print("\nNext steps:")
-print("1. Update backend/api/models.py (add actual_value field)")
-print("2. Run: python manage.py makemigrations")
-print("3. Run: python manage.py migrate")
-print("4. Update backend/api/views.py (use ML model)")
-print("5. Restart Django server")
+print("1. Generate training profile: python ml/generate_training_profile.py")
+print("2. Restart Django server")
+print("\n" + "="*80)
+
+# Auto-generate training profile
+print("\n" + "="*80)
+print("GENERATING TRAINING PROFILE")
+print("="*80)
+
+try:
+    # Calculate feature statistics from training data
+    feature_stats = {}
+    for col in X.columns:
+        feature_stats[col] = {
+            'mean': float(X[col].mean()),
+            'std': float(X[col].std()),
+            'min': float(X[col].min()),
+            'max': float(X[col].max()),
+            'q25': float(X[col].quantile(0.25)),
+            'q50': float(X[col].quantile(0.50)),
+            'q75': float(X[col].quantile(0.75)),
+            'q95': float(X[col].quantile(0.95)),
+            'q99': float(X[col].quantile(0.99)),
+        }
+    
+    prediction_stats = {
+        'target_mean': float(y.mean()),
+        'target_std': float(y.std()),
+        'target_min': float(y.min()),
+        'target_max': float(y.max()),
+        'target_q95': float(y.quantile(0.95)),
+        'target_q99': float(y.quantile(0.99)),
+    }
+    
+    training_profile = {
+        'version': '1.0.0',
+        'generated_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'n_samples': len(X),
+        'feature_names': feature_names,
+        'feature_stats': feature_stats,
+        'prediction_stats': prediction_stats,
+        'scaler_params': {
+            'mean': scaler.mean_.tolist(),
+            'scale': scaler.scale_.tolist(),
+        },
+        'confidence_thresholds': {
+            'high': 0.85,
+            'medium': 0.70,
+            'low': 0.50,
+        },
+        'outlier_thresholds': {
+            'z_score_threshold': 3.0,
+            'cv_threshold': 0.50,
+            'min_outlier_features': 3,
+        }
+    }
+    
+    with open(save_dir / 'training_profile.json', 'w') as f:
+        json.dump(training_profile, f, indent=2)
+    print("  ✅ Saved: training_profile.json")
+    
+    print("\n✅ Training profile generated successfully!")
+    
+except Exception as e:
+    print(f"\n⚠️  Warning: Could not generate training profile: {e}")
+    print("You can generate it manually later using: python ml/generate_training_profile.py")
+
 print("\n" + "="*80)
