@@ -22,7 +22,15 @@ def diagnose_model():
     print("\n[1/5] Loading model...")
     try:
         import sys
+        import os
+        # Add Django project root to path
         sys.path.insert(0, '/app')
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+        
+        # Initialize Django
+        import django
+        django.setup()
+        
         from ml.model_loader import ml_model
         if ml_model is None:
             print("❌ Model not loaded!")
@@ -116,7 +124,13 @@ def diagnose_model():
     else:
         try:
             import sys
+            import os
             sys.path.insert(0, '/app')
+            os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+            
+            import django
+            django.setup()
+            
             from ml.feature_extractor import extract_features_from_csv
             
             print(f"   Loading CSV: {data_path}")
