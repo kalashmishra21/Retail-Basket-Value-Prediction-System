@@ -21,6 +21,8 @@ def diagnose_model():
     # Load model
     print("\n[1/5] Loading model...")
     try:
+        import sys
+        sys.path.insert(0, '/app')
         from ml.model_loader import ml_model
         if ml_model is None:
             print("❌ Model not loaded!")
@@ -29,6 +31,8 @@ def diagnose_model():
         print(f"   Model R²: {ml_model.get_metrics()['test']['r2']:.4f}")
     except Exception as e:
         print(f"❌ Failed to load model: {e}")
+        import traceback
+        traceback.print_exc()
         return
     
     # Load training profile
@@ -111,6 +115,8 @@ def diagnose_model():
         print(f"⚠️  Dataset not found: {data_path}")
     else:
         try:
+            import sys
+            sys.path.insert(0, '/app')
             from ml.feature_extractor import extract_features_from_csv
             
             print(f"   Loading CSV: {data_path}")
